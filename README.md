@@ -2,36 +2,70 @@
 
 **Clairen Haus** — autonomous multi-agent operations for creator back-office (intake, qualification, deal ops, contracts, billing, renewals, oversight).
 
-Product direction is defined in the Creator Ops PRD (internal). Stack target for v1: **Next.js**, **Supabase** (Postgres + Auth + RLS), **Stripe Invoicing**, **Documenso** (hosted), persona-based email with approval gates and full audit logging.
+## Stack
 
-## Repository status
+- **Next.js** (App Router) + TypeScript
+- **Supabase** (Postgres, Auth, RLS) — migrations in `supabase/migrations/`
+- **Stripe** Invoicing
+- **Documenso** (hosted API) for contract drafts
+- **Resend** for persona outbound email (optional until configured)
 
-This repository is bootstrapped for version control and CI. Application scaffolding (Next.js, Supabase migrations, workers) follows the implementation plan.
+## Setup
 
-## Publish to GitHub
+1. **Environment**
 
-### Option A — GitHub website
+   ```bash
+   cp .env.example .env.local
+   ```
 
-1. Create a new empty repository (no README) at [github.com/new](https://github.com/new), e.g. `creator-ops`.
-2. From this folder:
+   Fill Supabase URL/keys from the Supabase dashboard. Add `SUPABASE_SERVICE_ROLE_KEY` for workers and webhooks.
 
-```bash
-cd /Users/michellerobinson/Desktop/creator-ops
-git remote add origin https://github.com/<YOUR_USER_OR_ORG>/creator-ops.git
-git branch -M main
-git push -u origin main
-```
+2. **Database**
 
-### Option B — GitHub CLI
+   Link the project and run migrations (local or remote):
 
-Install the CLI (`brew install gh`), run `gh auth login`, then:
+   ```bash
+   npx supabase db push
+   ```
 
-```bash
-cd /Users/michellerobinson/Desktop/creator-ops
-gh repo create creator-ops --private --source=. --remote=origin --push
-```
+   Or paste SQL from `supabase/migrations/` into the Supabase SQL editor.
 
-Adjust visibility (`--public`) and name as needed.
+3. **Roles**
+
+   - New users get `profiles.role = creator` (trigger on signup).
+   - Promote **ops** users in SQL: `update profiles set role = 'ops' where id = '<auth-user-uuid>';`
+   - Link a creator to a user: `update profiles set creator_id = '<creator-uuid>' where id = '<auth-user-uuid>';`
+
+4. **Run**
+
+   ```bash
+   npm install
+   npm run dev
+   ```
+
+5. **Worker (job queue)**
+
+   Process pending rows in `job_queue` (emails, contract drafts, Stripe invoices):
+
+   ```bash
+   SUPABASE_SERVICE_ROLE_KEY=... npx tsx scripts/worker.ts
+   ```
+
+   On Vercel, add `CRON_SECRET` to project env and enable the cron in `vercel.json` — Vercel sends `Authorization: Bearer <CRON_SECRET>` to `/api/cron/process-jobs`.
+
+## API
+
+- **Webhook intake** — `POST /api/webhooks/intake` with header `x-webhook-secret: <INTAKE_WEBHOOK_SECRET>` and JSON body including `creator_id`, `contact`, `deal`, optional `qualification_score`.
+- **Stripe** — `POST /api/webhooks/stripe` with `stripe-signature` (configure `STRIPE_WEBHOOK_SECRET`).
+
+## Routes
+
+| Path | Purpose |
+|------|---------|
+| `/` | Marketing splash |
+| `/login` | Magic link |
+| `/ops/*` | Internal Ops console (requires `role = ops`) |
+| `/portal/*` | Creator-facing outcomes (requires `role = creator`) |
 
 ## License
 
