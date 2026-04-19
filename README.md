@@ -22,11 +22,16 @@
 
 2. **Database**
 
-   Link the project and run migrations (local or remote):
+   Link the project, then push migrations:
 
    ```bash
+   npx supabase login
+   npx supabase link --project-ref YOUR_PROJECT_REF
    npx supabase db push
    ```
+
+   If **`db push` fails** (e.g. `does not exist`, syntax near `execute`, or extension errors), pull the latest repo and run **`db push` again**, or paste
+   [`supabase/RUN_IN_SQL_EDITOR.sql`](supabase/RUN_IN_SQL_EDITOR.sql) in the SQL Editor (triggers use `EXECUTE PROCEDURE`, compatible with Supabase Postgres).
 
    Or in **Supabase → SQL Editor**, paste the combined file
    [`supabase/RUN_IN_SQL_EDITOR.sql`](supabase/RUN_IN_SQL_EDITOR.sql) and run once

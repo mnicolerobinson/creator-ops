@@ -1,12 +1,10 @@
 -- ============================================================================
--- Creator Ops — run once in Supabase Dashboard → SQL Editor → New query
--- Paste this entire file, then Run. Safe to re-run only where noted (IF NOT EXISTS / DO blocks).
--- For CLI instead: npx supabase login && npx supabase link --project-ref YOUR_REF && npx supabase db push
+-- Creator Ops — Supabase SQL Editor: paste all → Run once
+-- CLI: npx supabase login && npx supabase link --project-ref YOUR_REF && npx supabase db push
 -- ============================================================================
 
 -- Creator Ops — core schema + RLS (Supabase / Postgres)
-
-create extension if not exists pgcrypto;
+-- gen_random_uuid() is built-in on Postgres 13+ (Supabase); no pgcrypto required.
 
 -- ---------------------------------------------------------------------------
 -- Enums
@@ -311,12 +309,12 @@ $$;
 drop trigger if exists creators_updated_at on public.creators;
 create trigger creators_updated_at
   before update on public.creators
-  for each row execute function public.set_updated_at();
+  for each row execute procedure public.set_updated_at();
 
 drop trigger if exists deals_updated_at on public.deals;
 create trigger deals_updated_at
   before update on public.deals
-  for each row execute function public.set_updated_at();
+  for each row execute procedure public.set_updated_at();
 
 -- ---------------------------------------------------------------------------
 -- Auth: new user → profile
@@ -338,7 +336,7 @@ $$;
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
-  for each row execute function public.handle_new_user();
+  for each row execute procedure public.handle_new_user();
 
 -- ---------------------------------------------------------------------------
 -- RLS
