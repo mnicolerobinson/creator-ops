@@ -28,7 +28,9 @@
    npx supabase db push
    ```
 
-   Or paste SQL from `supabase/migrations/` into the Supabase SQL editor.
+   Or in **Supabase → SQL Editor**, paste the combined file
+   [`supabase/RUN_IN_SQL_EDITOR.sql`](supabase/RUN_IN_SQL_EDITOR.sql) and run once
+   (same content as `supabase/migrations/*.sql`, in order).
 
 3. **Roles**
 
