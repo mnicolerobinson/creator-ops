@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Resend } from "resend";
 import Stripe from "stripe";
 import { subscriptionTiers, type SubscriptionTierKey } from "@/lib/billing/tiers";
 import { getEnv } from "@/lib/env";
@@ -6,6 +7,30 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 function referralCodeBase(email: string) {
   return email.split("@")[0]?.replace(/[^a-z0-9]/gi, "").slice(0, 18) || "creator";
+}
+
+function getStripeId(value: string | { id?: string } | null | undefined) {
+  if (!value) return null;
+  return typeof value === "string" ? value : value.id ?? null;
+}
+
+async function sendMagicLinkEmail(args: {
+  apiKey: string;
+  from: string;
+  to: string;
+  link: string;
+}) {
+  const resend = new Resend(args.apiKey);
+  await resend.emails.send({
+    from: args.from,
+    to: args.to,
+    subject: "Your CreatrOps setup link",
+    text: `Your CreatrOps account is ready. Continue setup here: ${args.link}`,
+    html: `
+      <p>Your CreatrOps account is ready.</p>
+      <p><a href="${args.link}">Continue your setup</a></p>
+    `,
+  });
 }
 
 async function ensureSarahPersona(
@@ -76,32 +101,33 @@ export async function POST(request: Request) {
       );
     }
 
-    const authResult = await supabase.auth.admin.createUser({
+    if (!env.RESEND_API_KEY) {
+      return NextResponse.json({ error: "Resend not configured" }, { status: 501 });
+    }
+
+    const linkResult = await supabase.auth.admin.generateLink({
+      type: "magiclink",
       email,
-      email_confirm: true,
-      user_metadata: { source: "stripe_checkout" },
+      options: {
+        redirectTo: "https://app.creatrops.com/onboarding/step-1",
+      },
     });
 
-    let userId = authResult.data.user?.id ?? null;
-    if (authResult.error) {
-      const { data: existingProfile } = await supabase
-        .from("user_profiles")
-        .select("id")
-        .eq("email", email)
-        .maybeSingle();
-      userId = existingProfile?.id ?? null;
+    if (linkResult.error) {
+      throw linkResult.error;
     }
 
+    const userId = linkResult.data.user?.id ?? null;
+    const magicLink = linkResult.data.properties?.action_link;
     if (!userId) {
-      throw authResult.error ?? new Error("Unable to create or find auth user.");
+      throw new Error("Supabase did not return a user for the magic link.");
+    }
+    if (!magicLink) {
+      throw new Error("Supabase did not return a magic link.");
     }
 
-    const customerId =
-      typeof session.customer === "string" ? session.customer : session.customer?.id;
-    const subscriptionId =
-      typeof session.subscription === "string"
-        ? session.subscription
-        : session.subscription?.id;
+    const customerId = getStripeId(session.customer);
+    const subscriptionId = getStripeId(session.subscription);
     const tierConfig = subscriptionTiers[tier];
     const displayName =
       session.customer_details?.name ?? referralCodeBase(email).replace(/\d+$/, "");
@@ -157,16 +183,28 @@ export async function POST(request: Request) {
       },
     });
 
-    await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${env.NEXT_PUBLIC_SITE_URL}/auth/callback?next=/onboarding/step-1`,
-      },
+    await sendMagicLinkEmail({
+      apiKey: env.RESEND_API_KEY,
+      from: env.EMAIL_FROM ?? "CreatrOps <ops@clairenhaus.com>",
+      to: email,
+      link: magicLink,
     });
   }
 
   if (event.type === "invoice.paid" || event.type === "invoice.payment_succeeded") {
     const inv = event.data.object as Stripe.Invoice;
+    const customerId = getStripeId(inv.customer);
+    const subscriptionId = getStripeId((inv as unknown as { subscription?: string | { id?: string } }).subscription);
+    if (customerId || subscriptionId) {
+      let query = supabase.from("clients").update({ subscription_status: "active" });
+      if (subscriptionId) {
+        query = query.eq("stripe_subscription_id", subscriptionId);
+      } else if (customerId) {
+        query = query.eq("stripe_customer_id", customerId);
+      }
+      await query;
+    }
+
     const stripeId = inv.id;
     const { data: row } = await supabase
       .from("invoices")
@@ -198,13 +236,16 @@ export async function POST(request: Request) {
 
   if (event.type === "invoice.payment_failed") {
     const inv = event.data.object as Stripe.Invoice;
-    const customerId =
-      typeof inv.customer === "string" ? inv.customer : inv.customer?.id;
-    if (customerId) {
-      await supabase
-        .from("clients")
-        .update({ subscription_status: "past_due" })
-        .eq("stripe_customer_id", customerId);
+    const customerId = getStripeId(inv.customer);
+    const subscriptionId = getStripeId((inv as unknown as { subscription?: string | { id?: string } }).subscription);
+    if (customerId || subscriptionId) {
+      let query = supabase.from("clients").update({ subscription_status: "past_due" });
+      if (subscriptionId) {
+        query = query.eq("stripe_subscription_id", subscriptionId);
+      } else if (customerId) {
+        query = query.eq("stripe_customer_id", customerId);
+      }
+      await query;
     }
   }
 
