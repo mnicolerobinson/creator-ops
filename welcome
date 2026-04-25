@@ -1,0 +1,1752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CreatrOps — Welcome</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Bebas+Neue&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --red: #C8102E;
+    --red-deep: #8B0000;
+    --red-bright: #E8001A;
+    --gold: #C9A84C;
+    --gold-light: #E8C97A;
+    --black: #050505;
+    --black-2: #0D0D0D;
+    --black-3: #141414;
+    --black-4: #1A1A1A;
+    --white: #FAFAFA;
+    --white-muted: #B0A89A;
+    --white-dim: rgba(250,250,250,0.06);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 300;
+    overflow-x: hidden;
+    cursor: default;
+  }
+
+  /* ── NOISE OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 60px;
+    background: linear-gradient(to bottom, rgba(5,5,5,0.95), transparent);
+  }
+
+  .nav-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 4px;
+    color: var(--white);
+  }
+
+  .nav-logo span { color: var(--red); }
+
+  .nav-tag {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--white-muted);
+  }
+
+  /* ── HERO ── */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 120px 40px 80px;
+    overflow: hidden;
+  }
+
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 110%, rgba(200,16,46,0.18) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 40% at 20% 50%, rgba(200,16,46,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 50% at 80% 20%, rgba(201,168,76,0.04) 0%, transparent 60%),
+      var(--black);
+  }
+
+  .hero-lines {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(200,16,46,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(200,16,46,0.06) 1px, transparent 1px);
+    background-size: 80px 80px;
+    mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black 0%, transparent 80%);
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    max-width: 900px;
+  }
+
+  .hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 10px;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 40px;
+  }
+
+  .hero-eyebrow::before,
+  .hero-eyebrow::after {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 1px;
+    background: var(--gold);
+    opacity: 0.5;
+  }
+
+  .hero-headline {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(52px, 8vw, 96px);
+    font-weight: 300;
+    line-height: 1.0;
+    letter-spacing: -1px;
+    margin-bottom: 16px;
+    color: var(--white);
+  }
+
+  .hero-headline em {
+    font-style: italic;
+    color: var(--red);
+  }
+
+  .hero-headline .outline {
+    -webkit-text-stroke: 1px rgba(250,250,250,0.3);
+    color: transparent;
+  }
+
+  .hero-sub {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 13px;
+    font-weight: 300;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--white-muted);
+    margin-bottom: 48px;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--red);
+    color: var(--white);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 18px 40px;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-cta::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--red-bright);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+
+  .hero-cta:hover::before { transform: translateX(0); }
+  .hero-cta span { position: relative; z-index: 1; }
+
+  .hero-cta .arrow {
+    position: relative;
+    z-index: 1;
+    font-size: 16px;
+    transition: transform 0.3s ease;
+  }
+
+  .hero-cta:hover .arrow { transform: translateX(4px); }
+
+  .hero-scroll {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: var(--white-muted);
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  .scroll-line {
+    width: 1px;
+    height: 50px;
+    background: linear-gradient(to bottom, var(--red), transparent);
+    animation: scrollPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes scrollPulse {
+    0%, 100% { opacity: 0.3; transform: scaleY(1); }
+    50% { opacity: 1; transform: scaleY(1.2); }
+  }
+
+  /* ── DIVIDER ── */
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 0 60px;
+    margin: 0 auto;
+    max-width: 1200px;
+  }
+
+  .divider-line { flex: 1; height: 1px; background: rgba(255,255,255,0.08); }
+  .divider-dot { width: 4px; height: 4px; background: var(--red); transform: rotate(45deg); flex-shrink: 0; }
+
+  /* ── STATS BAR ── */
+  .stats-bar {
+    padding: 60px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: rgba(255,255,255,0.05);
+    margin: 60px 0;
+  }
+
+  .stat-item {
+    background: var(--black);
+    padding: 40px 60px;
+    text-align: center;
+  }
+
+  .stat-number {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 64px;
+    letter-spacing: 2px;
+    color: var(--red);
+    display: block;
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--white-muted);
+    margin-top: 8px;
+    display: block;
+  }
+
+  /* ── VSL SECTION ── */
+  .vsl-section {
+    padding: 80px 60px;
+    max-width: 1000px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 24px;
+    display: block;
+  }
+
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(36px, 5vw, 60px);
+    font-weight: 300;
+    line-height: 1.1;
+    margin-bottom: 24px;
+  }
+
+  .section-title em { font-style: italic; color: var(--gold-light); }
+
+  .section-body {
+    font-size: 14px;
+    line-height: 1.9;
+    color: var(--white-muted);
+    max-width: 600px;
+    margin: 0 auto 48px;
+    letter-spacing: 0.3px;
+  }
+
+  .vsl-frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: var(--black-3);
+    border: 1px solid rgba(200,16,46,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .vsl-frame::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(200,16,46,0.05) 0%, transparent 50%, rgba(201,168,76,0.03) 100%);
+  }
+
+  .vsl-corner {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-color: var(--red);
+    border-style: solid;
+    opacity: 0.6;
+  }
+
+  .vsl-corner.tl { top: 0; left: 0; border-width: 1px 0 0 1px; }
+  .vsl-corner.tr { top: 0; right: 0; border-width: 1px 1px 0 0; }
+  .vsl-corner.bl { bottom: 0; left: 0; border-width: 0 0 1px 1px; }
+  .vsl-corner.br { bottom: 0; right: 0; border-width: 0 1px 1px 0; }
+
+  .vsl-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .play-btn {
+    width: 72px;
+    height: 72px;
+    border: 1px solid rgba(200,16,46,0.4);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: rgba(200,16,46,0.1);
+  }
+
+  .play-btn:hover {
+    background: rgba(200,16,46,0.25);
+    border-color: var(--red);
+    transform: scale(1.05);
+  }
+
+  .play-icon {
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 12px 0 12px 20px;
+    border-color: transparent transparent transparent var(--red);
+    margin-left: 4px;
+  }
+
+  .vsl-caption {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--white-muted);
+  }
+
+  /* ── PROBLEM SECTION ── */
+  .problem-section {
+    padding: 100px 60px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .problem-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+    align-items: center;
+    margin-top: 60px;
+  }
+
+  .problem-list { display: flex; flex-direction: column; gap: 32px; }
+
+  .problem-item {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    padding-bottom: 32px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .problem-item:last-child { border-bottom: none; padding-bottom: 0; }
+
+  .problem-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 40px;
+    color: rgba(200,16,46,0.2);
+    line-height: 1;
+    flex-shrink: 0;
+    width: 48px;
+  }
+
+  .problem-text h3 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 400;
+    margin-bottom: 8px;
+    color: var(--white);
+  }
+
+  .problem-text p {
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--white-muted);
+  }
+
+  .problem-visual {
+    position: relative;
+    padding: 40px;
+    background: var(--black-3);
+    border: 1px solid rgba(200,16,46,0.12);
+  }
+
+  .problem-visual::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--red), transparent);
+  }
+
+  .money-lost {
+    text-align: center;
+    padding: 40px 0;
+  }
+
+  .money-label {
+    font-size: 10px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--white-muted);
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  .money-amount {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 80px;
+    color: var(--red);
+    letter-spacing: 2px;
+    display: block;
+    line-height: 1;
+  }
+
+  .money-sub {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--white-muted);
+    text-transform: uppercase;
+    margin-top: 8px;
+    display: block;
+  }
+
+  .inbox-preview {
+    margin-top: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .inbox-msg {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--black-4);
+    font-size: 12px;
+    opacity: 0.5;
+    border-left: 2px solid transparent;
+    transition: all 0.3s;
+  }
+
+  .inbox-msg.unread {
+    opacity: 1;
+    border-left-color: var(--red);
+  }
+
+  .inbox-msg .brand { color: var(--white); font-weight: 500; }
+  .inbox-msg .preview { color: var(--white-muted); font-size: 11px; }
+  .inbox-msg .time { color: var(--white-muted); font-size: 10px; letter-spacing: 1px; flex-shrink: 0; }
+
+  /* ── FEATURES ── */
+  .features-section {
+    padding: 100px 60px;
+    background: var(--black-2);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .features-section::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(200,16,46,0.3), transparent);
+  }
+
+  .features-inner { max-width: 1200px; margin: 0 auto; }
+
+  .features-header { text-align: center; margin-bottom: 80px; }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: rgba(255,255,255,0.04);
+  }
+
+  .feature-card {
+    background: var(--black-2);
+    padding: 48px 40px;
+    position: relative;
+    transition: background 0.3s ease;
+  }
+
+  .feature-card:hover { background: var(--black-3); }
+
+  .feature-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 40px; right: 40px;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(200,16,46,0.2), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .feature-card:hover::after { opacity: 1; }
+
+  .feature-icon {
+    width: 40px;
+    height: 40px;
+    border: 1px solid rgba(200,16,46,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    font-size: 18px;
+  }
+
+  .feature-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 400;
+    margin-bottom: 12px;
+    color: var(--white);
+  }
+
+  .feature-body {
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--white-muted);
+  }
+
+  /* ── GATED ENTRY ── */
+  .gate-section {
+    padding: 120px 60px;
+    position: relative;
+    overflow: hidden;
+    background: var(--black);
+  }
+
+  .gate-section::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 70% 60% at 50% 100%, rgba(200,16,46,0.12) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 40% at 80% 0%, rgba(201,168,76,0.04) 0%, transparent 60%);
+  }
+
+  .gate-inner {
+    position: relative;
+    max-width: 720px;
+    margin: 0 auto;
+    z-index: 2;
+  }
+
+  .gate-header { text-align: center; margin-bottom: 64px; }
+
+  .gate-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 20px;
+    border: 1px solid rgba(201,168,76,0.3);
+    font-size: 10px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 32px;
+  }
+
+  .gate-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--gold);
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  .gate-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(40px, 5vw, 64px);
+    font-weight: 300;
+    line-height: 1.05;
+    margin-bottom: 20px;
+  }
+
+  .gate-title em { font-style: italic; color: var(--gold-light); }
+
+  .gate-sub {
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--white-muted);
+    letter-spacing: 0.3px;
+  }
+
+  /* ── FORM ── */
+  .entry-form {
+    background: var(--black-3);
+    border: 1px solid rgba(255,255,255,0.06);
+    padding: 56px;
+    position: relative;
+  }
+
+  .entry-form::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(to right, transparent, var(--red), var(--gold), transparent);
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .form-group.full { grid-column: 1 / -1; }
+
+  label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--white-muted);
+  }
+
+  input, select {
+    background: var(--black-4);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--white);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 13px;
+    font-weight: 300;
+    padding: 14px 16px;
+    outline: none;
+    transition: border-color 0.2s ease;
+    width: 100%;
+    -webkit-appearance: none;
+  }
+
+  input::placeholder { color: rgba(255,255,255,0.2); }
+
+  input:focus, select:focus {
+    border-color: rgba(200,16,46,0.5);
+    background: rgba(200,16,46,0.03);
+  }
+
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    padding-right: 40px;
+    cursor: pointer;
+    color: rgba(255,255,255,0.5);
+  }
+
+  select option { background: var(--black-3); }
+
+  .handles-section { margin-bottom: 20px; }
+
+  .handles-label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--white-muted);
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  .handles-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .handle-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .handle-prefix {
+    position: absolute;
+    left: 14px;
+    font-size: 13px;
+    color: var(--red);
+    font-weight: 400;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .handle-platform {
+    position: absolute;
+    right: 14px;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.2);
+    pointer-events: none;
+  }
+
+  .handle-input-wrap input {
+    padding-left: 28px;
+    padding-right: 80px;
+  }
+
+  .email-verify-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .email-verify-row .form-group { flex: 1; margin-bottom: 0; }
+
+  .verify-btn {
+    align-self: flex-end;
+    background: transparent;
+    border: 1px solid rgba(200,16,46,0.4);
+    color: var(--red);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 14px 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    height: 47px;
+  }
+
+  .verify-btn:hover {
+    background: rgba(200,16,46,0.1);
+    border-color: var(--red);
+  }
+
+  .verify-badge {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: #4CAF50;
+    text-transform: uppercase;
+    align-self: flex-end;
+    padding-bottom: 16px;
+  }
+
+  .verify-badge.show { display: flex; }
+
+  .otp-row {
+    display: none;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .otp-row.show { display: flex; }
+
+  .otp-row input {
+    width: 48px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 500;
+    padding: 12px 0;
+    letter-spacing: 2px;
+    flex-shrink: 0;
+  }
+
+  .otp-hint {
+    font-size: 11px;
+    color: var(--white-muted);
+    letter-spacing: 0.5px;
+    align-self: center;
+    flex: 1;
+    padding-left: 8px;
+  }
+
+  .form-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+    margin: 32px 0;
+    position: relative;
+  }
+
+  .form-divider::after {
+    content: 'Optional';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--black-3);
+    padding: 0 12px;
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.2);
+  }
+
+  .submit-btn {
+    width: 100%;
+    background: var(--red);
+    border: none;
+    color: var(--white);
+    font-family: 'Montserrat', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    margin-top: 32px;
+  }
+
+  .submit-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to right, var(--red-deep), var(--red-bright));
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .submit-btn:hover::before { opacity: 1; }
+  .submit-btn span { position: relative; z-index: 1; }
+
+  .submit-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .form-disclaimer {
+    text-align: center;
+    font-size: 10px;
+    color: rgba(255,255,255,0.2);
+    letter-spacing: 1px;
+    margin-top: 20px;
+    line-height: 1.8;
+  }
+
+  /* ── SUCCESS STATE ── */
+  .success-state {
+    display: none;
+    text-align: center;
+    padding: 80px 40px;
+  }
+
+  .success-state.show { display: block; }
+  .entry-form.hide { display: none; }
+
+  .success-icon {
+    width: 80px;
+    height: 80px;
+    border: 1px solid var(--gold);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 32px;
+    font-size: 32px;
+  }
+
+  .success-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 48px;
+    font-weight: 300;
+    margin-bottom: 16px;
+  }
+
+  .success-title em { font-style: italic; color: var(--gold-light); }
+
+  .success-body {
+    font-size: 13px;
+    line-height: 1.9;
+    color: var(--white-muted);
+    max-width: 400px;
+    margin: 0 auto;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    padding: 60px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 4px;
+    color: var(--white);
+  }
+
+  .footer-logo span { color: var(--red); }
+
+  .footer-text {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.2);
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .fade-up {
+    animation: fadeUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    opacity: 0;
+  }
+
+  .fade-up.d1 { animation-delay: 0.1s; }
+  .fade-up.d2 { animation-delay: 0.25s; }
+  .fade-up.d3 { animation-delay: 0.4s; }
+  .fade-up.d4 { animation-delay: 0.55s; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    nav { padding: 20px 24px; }
+    .hero { padding: 100px 24px 80px; }
+    .stats-bar { grid-template-columns: 1fr; padding: 0; }
+    .stat-item { padding: 40px 24px; }
+    .vsl-section, .problem-section, .gate-section { padding: 60px 24px; }
+    .features-section { padding: 60px 24px; }
+    .features-grid { grid-template-columns: 1fr; }
+    .problem-grid { grid-template-columns: 1fr; gap: 40px; }
+    .form-row { grid-template-columns: 1fr; }
+    .handles-grid { grid-template-columns: 1fr; }
+    .entry-form { padding: 32px 24px; }
+    footer { padding: 40px 24px; flex-direction: column; gap: 16px; text-align: center; }
+  }
+  /* ── PRICING ── */
+  .pricing-section {
+    padding: 100px 60px;
+    background: var(--black);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .pricing-section::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(200,16,46,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .pricing-inner { max-width: 1100px; margin: 0 auto; }
+
+  .pricing-header { text-align: center; margin-bottom: 64px; }
+
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+
+  .pricing-card {
+    position: relative;
+    background: var(--black-3);
+    border: 1px solid rgba(255,255,255,0.07);
+    padding: 40px 32px;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease;
+  }
+
+  .pricing-card:hover { transform: translateY(-4px); }
+
+  .pricing-card-hero {
+    border-color: rgba(200,16,46,0.35);
+    transform: translateY(-12px);
+    background: var(--black-2);
+  }
+
+  .pricing-card-hero:hover { transform: translateY(-16px); }
+
+  /* glow underneath each card */
+  .pricing-glow {
+    position: absolute;
+    bottom: -30px;
+    left: 10%;
+    right: 10%;
+    height: 60px;
+    border-radius: 50%;
+    filter: blur(20px);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .pricing-glow-red { background: rgba(200,16,46,0.5); }
+  .pricing-glow-gold { background: rgba(201,168,76,0.35); }
+
+  .pricing-card-top {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(to right, transparent, rgba(201,168,76,0.4), transparent);
+  }
+
+  .pricing-card-top-red {
+    background: linear-gradient(to right, transparent, var(--red), transparent);
+  }
+
+  .pricing-popular {
+    display: inline-block;
+    background: var(--red);
+    color: var(--white);
+    font-size: 8px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    margin-bottom: 16px;
+    font-family: 'Montserrat', sans-serif;
+  }
+
+  .pricing-tier-name {
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--white-muted);
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 300;
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  .pricing-price {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 56px;
+    font-weight: 300;
+    color: var(--white);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .pricing-price sup {
+    font-size: 22px;
+    vertical-align: super;
+    color: var(--white-muted);
+  }
+
+  .pricing-mo {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 12px;
+    font-weight: 300;
+    color: var(--white-muted);
+    letter-spacing: 2px;
+  }
+
+  .pricing-rule {
+    height: 1px;
+    background: rgba(255,255,255,0.07);
+    margin: 24px 0;
+  }
+
+  .pricing-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 32px;
+    flex: 1;
+  }
+
+  .pricing-list li {
+    font-size: 13px;
+    color: var(--white-muted);
+    font-weight: 300;
+    letter-spacing: 0.3px;
+    padding-left: 16px;
+    position: relative;
+  }
+
+  .pricing-list li::before {
+    content: '—';
+    position: absolute;
+    left: 0;
+    color: var(--red);
+    font-size: 10px;
+  }
+
+  .pricing-btn {
+    display: block;
+    text-align: center;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 16px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+  }
+
+  .pricing-btn-solid {
+    background: var(--red);
+    color: var(--white);
+    border: 1px solid var(--red);
+  }
+
+  .pricing-btn-solid:hover { background: var(--red-bright); }
+
+  .pricing-btn-outline {
+    background: transparent;
+    color: var(--white-muted);
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+
+  .pricing-btn-outline:hover {
+    border-color: rgba(200,16,46,0.4);
+    color: var(--white);
+  }
+
+  .pricing-footnote {
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: rgba(255,255,255,0.2);
+    margin-top: 48px;
+  }
+
+  @media (max-width: 900px) {
+    .pricing-section { padding: 60px 24px; }
+    .pricing-grid { grid-template-columns: 1fr; gap: 16px; }
+    .pricing-card-hero { transform: none; }
+    .pricing-card-hero:hover { transform: translateY(-4px); }
+  }
+
+  /* ── AFFILIATE ── */
+  .affiliate-section { padding: 100px 60px; background: var(--black-2); position: relative; overflow: hidden; }
+  .affiliate-section::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(to right, transparent, rgba(201,168,76,0.3), transparent); }
+  .affiliate-inner { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
+  .affiliate-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin: 40px 0; }
+  .affiliate-stat { text-align: center; }
+  .affiliate-stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 48px; color: var(--gold); display: block; line-height: 1; }
+  .affiliate-stat-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--white-muted); margin-top: 6px; display: block; }
+  .affiliate-example { background: var(--black-3); border-left: 2px solid var(--gold); padding: 20px 24px; margin-top: 8px; }
+  .affiliate-example-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--gold); display: block; margin-bottom: 8px; }
+  .affiliate-example p { font-size: 13px; line-height: 1.8; color: var(--white-muted); }
+  .affiliate-example strong { color: var(--white); font-weight: 500; }
+  .affiliate-card { background: var(--black-3); border: 1px solid rgba(201,168,76,0.15); padding: 40px; position: relative; }
+  .affiliate-card-top { position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(to right, transparent, var(--gold), transparent); }
+  .affiliate-card-corner { position: absolute; width: 12px; height: 12px; border-color: rgba(201,168,76,0.3); border-style: solid; }
+  .affiliate-card-corner.tl { top: 8px; left: 8px; border-width: 1px 0 0 1px; }
+  .affiliate-card-corner.tr { top: 8px; right: 8px; border-width: 1px 1px 0 0; }
+  .affiliate-card-corner.bl { bottom: 8px; left: 8px; border-width: 0 0 1px 1px; }
+  .affiliate-card-corner.br { bottom: 8px; right: 8px; border-width: 0 1px 1px 0; }
+  .affiliate-card-label { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--gold); display: block; margin-bottom: 32px; }
+  .calc-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .calc-label { font-size: 11px; color: var(--white-muted); min-width: 130px; letter-spacing: 0.5px; }
+  .calc-row input[type=range] { flex: 1; accent-color: var(--red); height: 2px; background: rgba(255,255,255,0.1); border: none; padding: 0; }
+  .calc-val { font-size: 13px; font-weight: 500; color: var(--white); min-width: 28px; text-align: right; }
+  .calc-divider { height: 1px; background: rgba(255,255,255,0.07); margin: 24px 0; }
+  .calc-result { text-align: center; }
+  .calc-result-label { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--white-muted); display: block; margin-bottom: 8px; }
+  .calc-result-amount { font-family: 'Cormorant Garamond', serif; font-size: 56px; font-weight: 300; color: var(--gold-light); display: block; line-height: 1; }
+  .calc-breakdown { text-align: center; font-size: 10px; color: rgba(255,255,255,0.25); letter-spacing: 1px; margin-top: 8px; }
+
+  /* ── TIER SELECT ── */
+  .tier-select-section { padding: 100px 60px; background: var(--black); position: relative; overflow: hidden; }
+  .tier-select-section::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 70% 60% at 50% 100%, rgba(200,16,46,0.1) 0%, transparent 70%); }
+  .tier-select-inner { max-width: 1100px; margin: 0 auto; text-align: center; position: relative; z-index: 1; }
+  .tier-select-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin: 60px 0 32px; text-align: left; }
+  .tier-select-card { background: var(--black-3); border: 1px solid rgba(255,255,255,0.07); padding: 36px 28px; cursor: pointer; position: relative; transition: all 0.3s ease; display: flex; flex-direction: column; gap: 12px; }
+  .tier-select-card:hover { border-color: rgba(200,16,46,0.3); transform: translateY(-4px); }
+  .tier-select-featured { border-color: rgba(200,16,46,0.35); transform: translateY(-10px); background: var(--black-2); }
+  .tier-select-featured:hover { transform: translateY(-14px); }
+  .tier-select-top { position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(to right, transparent, rgba(201,168,76,0.35), transparent); }
+  .tier-select-top-red { background: linear-gradient(to right, transparent, var(--red), transparent); }
+  .tier-select-popular { display: inline-block; background: var(--red); color: var(--white); font-size: 8px; letter-spacing: 3px; text-transform: uppercase; padding: 3px 10px; font-family: 'Montserrat', sans-serif; align-self: flex-start; }
+  .tier-select-name { font-size: 11px; letter-spacing: 4px; text-transform: uppercase; color: var(--white-muted); font-family: 'Montserrat', sans-serif; font-weight: 300; }
+  .tier-select-price { font-family: 'Cormorant Garamond', serif; font-size: 48px; font-weight: 300; color: var(--white); line-height: 1; }
+  .tier-select-price sup { font-size: 20px; vertical-align: super; color: var(--white-muted); }
+  .tier-select-price span { font-family: 'Montserrat', sans-serif; font-size: 13px; color: var(--white-muted); letter-spacing: 1px; }
+  .tier-select-desc { font-size: 12px; line-height: 1.7; color: var(--white-muted); flex: 1; }
+  .tier-select-btn { text-align: center; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase; padding: 14px; border: 1px solid rgba(255,255,255,0.12); color: var(--white-muted); margin-top: 8px; transition: all 0.2s ease; }
+  .tier-select-card:hover .tier-select-btn { border-color: rgba(200,16,46,0.4); color: var(--white); }
+  .tier-select-btn-red { background: var(--red); border-color: var(--red); color: var(--white); }
+  .tier-select-card:hover .tier-select-btn-red { background: var(--red-bright); }
+  .tier-select-note { font-size: 11px; letter-spacing: 1px; color: rgba(255,255,255,0.2); margin-top: 16px; }
+  .activation-confirm { display: none; background: var(--black-3); border: 1px solid rgba(200,16,46,0.2); padding: 56px 48px; text-align: center; margin-top: 0; position: relative; }
+  .activation-confirm::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(to right, transparent, var(--red), var(--gold), transparent); }
+  .activation-confirm.show { display: block; }
+  .activation-icon { font-size: 36px; color: var(--gold); display: block; margin-bottom: 20px; }
+  .activation-title { font-family: 'Cormorant Garamond', serif; font-size: 36px; font-weight: 300; margin-bottom: 12px; }
+  .activation-title em { font-style: italic; color: var(--gold-light); }
+  .activation-body { font-size: 13px; line-height: 1.8; color: var(--white-muted); max-width: 480px; margin: 0 auto 40px; }
+  .activation-steps { display: flex; justify-content: center; gap: 0; position: relative; }
+  .activation-steps::before { content: ''; position: absolute; top: 10px; left: 12%; right: 12%; height: 1px; background: rgba(255,255,255,0.08); }
+  .activation-step { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; max-width: 140px; position: relative; z-index: 1; }
+  .step-dot { width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.15); background: var(--black-3); transition: all 0.5s ease; }
+  .step-dot-active { background: var(--red); border-color: var(--red); box-shadow: 0 0 12px rgba(200,16,46,0.5); }
+  .step-dot-done { background: var(--gold); border-color: var(--gold); }
+  .activation-step span { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--white-muted); }
+
+  @media (max-width: 900px) {
+    nav { padding: 20px 24px; }
+    .hero { padding: 100px 24px 80px; }
+    .stats-bar { grid-template-columns: 1fr; padding: 0; }
+    .stat-item { padding: 40px 24px; }
+    .vsl-section, .problem-section { padding: 60px 24px; }
+    .features-section { padding: 60px 24px; }
+    .features-grid { grid-template-columns: 1fr; }
+    .problem-grid { grid-template-columns: 1fr; gap: 40px; }
+    .affiliate-inner { grid-template-columns: 1fr; gap: 40px; }
+    .affiliate-section, .tier-select-section { padding: 60px 24px; }
+    .tier-select-grid { grid-template-columns: 1fr; }
+    .tier-select-featured { transform: none; }
+    .tier-select-featured:hover { transform: translateY(-4px); }
+    .affiliate-stats { grid-template-columns: repeat(3,1fr); }
+    .activation-confirm { padding: 40px 24px; }
+    footer { padding: 40px 24px; flex-direction: column; gap: 16px; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">Creatr<span>Ops</span></div>
+  <div class="nav-tag">by Clairen Haus</div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-lines"></div>
+
+  <div class="hero-content">
+    <div class="hero-eyebrow fade-up d1">Exclusive Early Access — Limited Enrollment</div>
+
+    <h1 class="hero-headline fade-up d2">
+      Your Brand Deals.<br>
+      <em>Finally</em> <span class="outline">Running</span><br>
+      Themselves.
+    </h1>
+
+    <p class="hero-sub fade-up d3">
+      A dedicated ops team that never sleeps, never misses an inquiry, and never lets a deal go cold
+    </p>
+
+    <a href="#apply" class="hero-cta fade-up d4">
+      <span>Get Early Access</span>
+      <span class="arrow">→</span>
+    </a>
+  </div>
+
+  <div class="hero-scroll">
+    <div class="scroll-line"></div>
+    <span>Scroll</span>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stat-item">
+    <span class="stat-number">48H</span>
+    <span class="stat-label">Average time creators take to respond to a brand inquiry</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-number">73%</span>
+    <span class="stat-label">Of deals lost to slow or no follow-up</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-number">$12K+</span>
+    <span class="stat-label">Left on the table monthly by creators without an ops system</span>
+  </div>
+</div>
+
+<!-- VSL SECTION -->
+<section class="vsl-section">
+  <span class="section-label">Watch First</span>
+  <h2 class="section-title">
+    This Is What You're<br>
+    <em>Leaving on the Table</em>
+  </h2>
+  <p class="section-body">
+    Every unanswered message is money someone else is making. Every missed follow-up is a deal that went to a creator who had their business together. This changes today.
+  </p>
+
+  <div class="vsl-frame">
+    <div class="vsl-corner tl"></div>
+    <div class="vsl-corner tr"></div>
+    <div class="vsl-corner bl"></div>
+    <div class="vsl-corner br"></div>
+    <div class="vsl-placeholder">
+      <div class="play-btn" onclick="alert('VSL video goes here')">
+        <div class="play-icon"></div>
+      </div>
+      <span class="vsl-caption">Watch the 3-minute overview</span>
+    </div>
+  </div>
+</section>
+
+<div class="divider"><div class="divider-line"></div><div class="divider-dot"></div><div class="divider-line"></div></div>
+
+<!-- PROBLEM SECTION -->
+<section class="problem-section">
+  <span class="section-label">The Reality</span>
+  <h2 class="section-title">You Built the Audience.<br><em>The Business Is Bleeding.</em></h2>
+
+  <div class="problem-grid">
+    <div class="problem-list">
+      <div class="problem-item">
+        <div class="problem-num">01</div>
+        <div class="problem-text">
+          <h3>Brands reach out. You see it three days later.</h3>
+          <p>By then they've moved on. The deal — and that check — went to someone who responded in two hours.</p>
+        </div>
+      </div>
+      <div class="problem-item">
+        <div class="problem-num">02</div>
+        <div class="problem-text">
+          <h3>You're across five platforms with five inboxes.</h3>
+          <p>Instagram, TikTok, email, Twitter, YouTube. Nobody can keep up with all of them and still create.</p>
+        </div>
+      </div>
+      <div class="problem-item">
+        <div class="problem-num">03</div>
+        <div class="problem-text">
+          <h3>Contracts and invoices sit unfinished for weeks.</h3>
+          <p>The deal closed in your head but it never got on paper. Now payment is delayed or the brand went quiet.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="problem-visual">
+      <div class="money-lost">
+        <span class="money-label">Estimated monthly deals missed</span>
+        <span class="money-amount">$12K+</span>
+        <span class="money-sub">Per creator without an ops system</span>
+      </div>
+
+      <div class="inbox-preview">
+        <div class="inbox-msg unread">
+          <div>
+            <div class="brand">FashionNova Collab ✦</div>
+            <div class="preview">Hi! We'd love to discuss a partnership...</div>
+          </div>
+          <div class="time">3d ago</div>
+        </div>
+        <div class="inbox-msg unread">
+          <div>
+            <div class="brand">Bloom Beauty PR</div>
+            <div class="preview">Following up on our campaign proposal...</div>
+          </div>
+          <div class="time">5d ago</div>
+        </div>
+        <div class="inbox-msg">
+          <div>
+            <div class="brand">Hydration Co.</div>
+            <div class="preview">We've moved forward with another creator.</div>
+          </div>
+          <div class="time">8d ago</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features-section">
+  <div class="features-inner">
+    <div class="features-header">
+      <span class="section-label">What You Get</span>
+      <h2 class="section-title">
+        A Dedicated Ops Team.<br>
+        <em>Working While You Create.</em>
+      </h2>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">◈</div>
+        <h3 class="feature-title">Every Inquiry, Handled</h3>
+        <p class="feature-body">Your dedicated account manager responds to every brand inquiry professionally, within hours. Nothing sits unanswered. No opportunity left behind.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">◎</div>
+        <h3 class="feature-title">Deal Pipeline, Always Moving</h3>
+        <p class="feature-body">Every deal is tracked from first contact to final payment. Follow-ups happen automatically. You always know where every opportunity stands.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">◇</div>
+        <h3 class="feature-title">Contracts Without the Headache</h3>
+        <p class="feature-body">When terms are agreed, your agreement is prepared and sent. Clean, professional, and aligned with your rates — without you touching a single document.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">▷</div>
+        <h3 class="feature-title">Brands Get a Professional</h3>
+        <p class="feature-body">Every brand interaction reflects your business professionally. Prompt responses, organized follow-through, and paperwork that actually gets done.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">◉</div>
+        <h3 class="feature-title">Your Dashboard. Your Numbers.</h3>
+        <p class="feature-body">See your entire business in one place. Every brand, every deal, every dollar — tracked by platform and tallied up so you always know where you stand.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">◈</div>
+        <h3 class="feature-title">Live in 48 Hours</h3>
+        <p class="feature-body">One onboarding call. 48 hours. Your ops team is up and running. No tech skills needed, no complicated setup — you just start receiving results.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING SECTION -->
+<section class="pricing-section">
+  <div class="pricing-inner">
+    <div class="pricing-header">
+      <span class="section-label">Investment</span>
+      <h2 class="section-title">Simple Pricing.<br><em>Serious Results.</em></h2>
+      <p class="section-body">One flat monthly rate. No commission cuts, no surprises. Just your ops team, running.</p>
+    </div>
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <div class="pricing-glow pricing-glow-gold"></div>
+        <div class="pricing-card-top"></div>
+        <span class="pricing-tier-name">Starter Ops</span>
+        <div class="pricing-price"><sup>$</sup>500<span class="pricing-mo">/mo</span></div>
+        <div class="pricing-rule"></div>
+        <ul class="pricing-list">
+          <li>Inbound inquiry management</li>
+          <li>CRM deal pipeline</li>
+          <li>Lead qualification</li>
+          <li>Standard email templates</li>
+          <li>Monthly ops report</li>
+        </ul>
+        <a href="#apply" class="pricing-btn pricing-btn-outline">Get Early Access</a>
+      </div>
+      <div class="pricing-card pricing-card-hero">
+        <div class="pricing-glow pricing-glow-red"></div>
+        <div class="pricing-card-top pricing-card-top-red"></div>
+        <span class="pricing-popular">Most Popular</span>
+        <span class="pricing-tier-name">Growth Ops</span>
+        <div class="pricing-price"><sup>$</sup>1,250<span class="pricing-mo">/mo</span></div>
+        <div class="pricing-rule"></div>
+        <ul class="pricing-list">
+          <li>Everything in Starter</li>
+          <li>Full deal ops pipeline</li>
+          <li>Contract preparation</li>
+          <li>Invoice tracking & reminders</li>
+          <li>Renewal outreach</li>
+          <li>Richer reporting</li>
+        </ul>
+        <a href="#apply" class="pricing-btn pricing-btn-solid">Get Early Access</a>
+      </div>
+      <div class="pricing-card">
+        <div class="pricing-glow pricing-glow-gold"></div>
+        <div class="pricing-card-top"></div>
+        <span class="pricing-tier-name">Creator CEO</span>
+        <div class="pricing-price"><sup>$</sup>2,500<span class="pricing-mo">/mo</span></div>
+        <div class="pricing-rule"></div>
+        <ul class="pricing-list">
+          <li>Everything in Growth</li>
+          <li>Advanced policy config</li>
+          <li>Priority onboarding</li>
+          <li>Dedicated account review</li>
+          <li>Full ops dashboard</li>
+          <li>Funnel & pipeline support</li>
+        </ul>
+        <a href="#apply" class="pricing-btn pricing-btn-outline">Get Early Access</a>
+      </div>
+    </div>
+    <p class="pricing-footnote">All plans include your dedicated account manager. No setup fees. Cancel anytime.</p>
+  </div>
+</section>
+
+<!-- AFFILIATE SECTION -->
+<section class="affiliate-section">
+  <div class="affiliate-inner">
+    <div class="affiliate-left">
+      <span class="section-label">Refer & Earn</span>
+      <h2 class="section-title">
+        Get Paid to<br>
+        <em>Spread the Word.</em>
+      </h2>
+      <p class="section-body">
+        Every creator you refer who joins CreatrOps puts recurring money in your pocket — every single month, for as long as they stay. No cap. No expiration.
+      </p>
+      <div class="affiliate-stats">
+        <div class="affiliate-stat">
+          <span class="affiliate-stat-num">20%</span>
+          <span class="affiliate-stat-label">Of every referral's monthly retainer</span>
+        </div>
+        <div class="affiliate-stat">
+          <span class="affiliate-stat-num">∞</span>
+          <span class="affiliate-stat-label">No cap on referrals</span>
+        </div>
+        <div class="affiliate-stat">
+          <span class="affiliate-stat-num">∞</span>
+          <span class="affiliate-stat-label">No expiration. Ever.</span>
+        </div>
+      </div>
+      <div class="affiliate-example">
+        <span class="affiliate-example-label">Example</span>
+        <p>Refer 10 creators on the base plan → <strong>$1,000/mo</strong> passive. Refer 50 → <strong>$5,000/mo</strong>. Your referral link activates the moment your account is live.</p>
+      </div>
+    </div>
+    <div class="affiliate-right">
+      <div class="affiliate-card">
+        <div class="affiliate-card-top"></div>
+        <div class="affiliate-card-corner tl"></div>
+        <div class="affiliate-card-corner tr"></div>
+        <div class="affiliate-card-corner bl"></div>
+        <div class="affiliate-card-corner br"></div>
+        <span class="affiliate-card-label">Your monthly earnings</span>
+        <div class="affiliate-calc">
+          <div class="calc-row">
+            <span class="calc-label">Creators referred</span>
+            <input type="range" id="directRef" min="0" max="100" value="10" oninput="calcEarnings()">
+            <span class="calc-val" id="directVal">10</span>
+          </div>
+          <div class="calc-divider"></div>
+          <div class="calc-result">
+            <span class="calc-result-label">Your monthly commission</span>
+            <span class="calc-result-amount" id="calcResult">$1,000</span>
+          </div>
+          <div class="calc-breakdown" id="calcBreakdown">
+            20% of $500/mo × 10 creators
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TIER SELECTION -->
+<section class="tier-select-section" id="apply">
+  <div class="tier-select-inner">
+    <span class="section-label">Get Started</span>
+    <h2 class="section-title">
+      Choose Your Plan.<br>
+      <em>Your Ops Team Activates Instantly.</em>
+    </h2>
+    <p class="section-body">
+      Pick your tier. Your account is created on the spot and a guided setup walks you through the rest — no calls, no waiting. You'll get a notification when your ops team is live.
+    </p>
+    <div class="tier-select-grid">
+      <div class="tier-select-card" onclick="selectTier(this, 'starter')">
+        <div class="tier-select-top"></div>
+        <span class="tier-select-name">Starter Ops</span>
+        <span class="tier-select-price"><sup>$</sup>500<span>/mo</span></span>
+        <span class="tier-select-desc">Inbound management, CRM pipeline, qualification, templates, monthly report</span>
+        <div class="tier-select-btn">Select Starter</div>
+      </div>
+      <div class="tier-select-card tier-select-featured" onclick="selectTier(this, 'growth')">
+        <div class="tier-select-top tier-select-top-red"></div>
+        <span class="tier-select-popular">Most Popular</span>
+        <span class="tier-select-name">Growth Ops</span>
+        <span class="tier-select-price"><sup>$</sup>1,250<span>/mo</span></span>
+        <span class="tier-select-desc">Full deal pipeline, contracts, invoices, renewal outreach, richer reporting</span>
+        <div class="tier-select-btn tier-select-btn-red">Select Growth</div>
+      </div>
+      <div class="tier-select-card" onclick="selectTier(this, 'ceo')">
+        <div class="tier-select-top"></div>
+        <span class="tier-select-name">Creator CEO</span>
+        <span class="tier-select-price"><sup>$</sup>2,500<span>/mo</span></span>
+        <span class="tier-select-desc">Everything in Growth plus advanced config, priority setup, dedicated review</span>
+        <div class="tier-select-btn">Select Creator CEO</div>
+      </div>
+    </div>
+
+    <!-- Activation confirmation -->
+    <div class="activation-confirm" id="activationConfirm">
+      <div class="activation-icon">✦</div>
+      <h3 class="activation-title">Setting Up Your <em id="selectedTierName">Growth Ops</em> Account</h3>
+      <p class="activation-body">Your ops team is spinning up in the background. You'll receive a notification with your portal access and setup wizard link within minutes.</p>
+      <div class="activation-steps">
+        <div class="activation-step" id="step1">
+          <div class="step-dot step-dot-active"></div>
+          <span>Account created</span>
+        </div>
+        <div class="activation-step" id="step2">
+          <div class="step-dot"></div>
+          <span>Persona assigned</span>
+        </div>
+        <div class="activation-step" id="step3">
+          <div class="step-dot"></div>
+          <span>Policy wizard ready</span>
+        </div>
+        <div class="activation-step" id="step4">
+          <div class="step-dot"></div>
+          <span>Ops team live</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="tier-select-note">No setup fees. Cancel anytime. Your referral link activates with your account.</p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">Creatr<span>Ops</span></div>
+  <div class="footer-text">© 2026 CreatrOps by Clairen Haus — All rights reserved</div>
+  <div class="footer-text">ops@clairenhaus.com</div>
+</footer>
+
+
+<script>
+  // ── AFFILIATE CALCULATOR ──
+  function calcEarnings() {
+    const direct = parseInt(document.getElementById('directRef').value);
+    document.getElementById('directVal').textContent = direct;
+    const total = direct * 500 * 0.20;
+    document.getElementById('calcResult').textContent = '$' + total.toLocaleString();
+    document.getElementById('calcBreakdown').textContent =
+      '20% of $500/mo × ' + direct + ' creator' + (direct !== 1 ? 's' : '');
+  }
+  calcEarnings();
+
+  // ── TIER SELECTION ──
+  const tierNames = { starter: 'Starter Ops', growth: 'Growth Ops', ceo: 'Creator CEO' };
+
+  function selectTier(card, tier) {
+    document.querySelectorAll('.tier-select-card').forEach(c => c.style.opacity = '0.4');
+    card.style.opacity = '1';
+    document.getElementById('selectedTierName').textContent = tierNames[tier];
+    document.getElementById('activationConfirm').classList.add('show');
+    document.querySelector('.tier-select-grid').style.pointerEvents = 'none';
+    window.scrollTo({ top: document.getElementById('activationConfirm').offsetTop - 80, behavior: 'smooth' });
+    animateSteps();
+  }
+
+  function animateSteps() {
+    const steps = ['step1','step2','step3','step4'];
+    const delays = [0, 1200, 2400, 3800];
+    steps.forEach((id, i) => {
+      setTimeout(() => {
+        const dot = document.getElementById(id).querySelector('.step-dot');
+        if (i > 0) {
+          const prevDot = document.getElementById(steps[i-1]).querySelector('.step-dot');
+          prevDot.classList.remove('step-dot-active');
+          prevDot.classList.add('step-dot-done');
+        }
+        dot.classList.add('step-dot-active');
+      }, delays[i]);
+    });
+    setTimeout(() => {
+      const lastDot = document.getElementById('step4').querySelector('.step-dot');
+      lastDot.classList.remove('step-dot-active');
+      lastDot.classList.add('step-dot-done');
+    }, 5200);
+  }
+
+  // ── SCROLL ANIMATIONS ──
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.style.opacity = '1';
+        entry.target.style.transform = 'translateY(0)';
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.feature-card, .problem-item, .stat-item, .tier-select-card, .pricing-card').forEach(el => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(20px)';
+    el.style.transition = 'opacity 0.7s ease, transform 0.7s ease';
+    observer.observe(el);
+  });
+</script>
+</body>
+</html>
