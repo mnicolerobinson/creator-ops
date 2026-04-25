@@ -4,8 +4,8 @@ export default async function AuditPage() {
   const supabase = await createServerSupabaseClient();
 
   const { data: logs } = await supabase
-    .from("agent_action_logs")
-    .select("id, agent, deal_id, trigger, confidence, result_json, created_at")
+    .from("agent_runs")
+    .select("id, agent_name, trigger_event, confidence, output_json, created_at:started_at")
     .order("created_at", { ascending: false })
     .limit(100);
 
@@ -78,13 +78,13 @@ export default async function AuditPage() {
                       ? new Date(l.created_at).toLocaleString()
                       : ""}
                   </td>
-                  <td className="px-3 py-2 text-zinc-800">{l.agent}</td>
-                  <td className="px-3 py-2 text-zinc-700">{l.trigger}</td>
+                  <td className="px-3 py-2 text-zinc-800">{l.agent_name}</td>
+                  <td className="px-3 py-2 text-zinc-700">{l.trigger_event}</td>
                   <td className="px-3 py-2 text-zinc-700">
                     {l.confidence != null ? Number(l.confidence).toFixed(3) : "—"}
                   </td>
                   <td className="max-w-md truncate px-3 py-2 text-zinc-600">
-                    {JSON.stringify(l.result_json)}
+                    {JSON.stringify(l.output_json)}
                   </td>
                 </tr>
               ))}

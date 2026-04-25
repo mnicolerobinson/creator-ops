@@ -6,7 +6,7 @@ export default async function OpsDealsPage() {
 
   const { data: deals } = await supabase
     .from("deals")
-    .select("id, title, stage, qualification_status, fit_score, updated_at")
+    .select("id, title, stage, qualification_reason, qualification_score, updated_at")
     .order("updated_at", { ascending: false });
 
   return (
@@ -51,10 +51,12 @@ export default async function OpsDealsPage() {
                 </td>
                 <td className="px-4 py-3 text-zinc-700">{d.stage}</td>
                 <td className="px-4 py-3 text-zinc-700">
-                  {d.qualification_status}
+                  {d.qualification_reason ?? "Pending"}
                 </td>
                 <td className="px-4 py-3 text-zinc-700">
-                  {d.fit_score != null ? Number(d.fit_score).toFixed(3) : "—"}
+                  {d.qualification_score != null
+                    ? Number(d.qualification_score).toFixed(2)
+                    : "—"}
                 </td>
                 <td className="px-4 py-3 text-zinc-600">
                   {d.updated_at

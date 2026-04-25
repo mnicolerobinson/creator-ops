@@ -6,22 +6,23 @@ export default async function PortalDealsPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const { data: profile } = user
+  const { data: access } = user
     ? await supabase
-        .from("profiles")
-        .select("creator_id")
-        .eq("id", user.id)
-        .single()
+        .from("user_clients")
+        .select("client_id")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle()
     : { data: null };
 
-  const creatorId = profile?.creator_id;
-  const { data: deals } = creatorId
+  const clientId = access?.client_id;
+  const { data: deals } = clientId
     ? await supabase
         .from("deals")
-        .select("id, title, stage, qualification_status, updated_at")
-        .eq("creator_id", creatorId)
+        .select("id, title, stage, qualification_reason, updated_at")
+        .eq("client_id", clientId)
         .order("updated_at", { ascending: false })
-    : { data: [] as { id: string; title: string; stage: string; qualification_status: string; updated_at: string | null }[] };
+    : { data: [] as { id: string; title: string; stage: string; qualification_reason: string | null; updated_at: string | null }[] };
 
   return (
     <div className="space-y-6">
@@ -37,7 +38,7 @@ export default async function PortalDealsPage() {
             <div>
               <p className="font-medium text-zinc-900">{d.title}</p>
               <p className="text-sm text-zinc-600">
-                {d.stage} · {d.qualification_status}
+                {d.stage} · {d.qualification_reason ?? "Qualification pending"}
               </p>
             </div>
             <Link

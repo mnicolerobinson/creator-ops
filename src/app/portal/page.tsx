@@ -5,38 +5,32 @@ export default async function PortalHomePage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const { data: profile } = user
+  const { data: access } = user
     ? await supabase
-        .from("profiles")
-        .select("creator_id")
-        .eq("id", user.id)
-        .single()
+        .from("user_clients")
+        .select("client_id")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle()
     : { data: null };
 
-  const creatorId = profile?.creator_id;
+  const clientId = access?.client_id;
   let dealCount = 0;
   let openInvoices = 0;
 
-  if (creatorId) {
+  if (clientId) {
     const { count: dc } = await supabase
       .from("deals")
       .select("*", { count: "exact", head: true })
-      .eq("creator_id", creatorId);
+      .eq("client_id", clientId);
     dealCount = dc ?? 0;
 
-    const { data: dealIds } = await supabase
-      .from("deals")
-      .select("id")
-      .eq("creator_id", creatorId);
-    const ids = (dealIds ?? []).map((d) => d.id);
-    if (ids.length > 0) {
-      const { data: inv } = await supabase
-        .from("invoices")
-        .select("id")
-        .in("deal_id", ids)
-        .in("status", ["draft", "open"]);
-      openInvoices = inv?.length ?? 0;
-    }
+    const { count: ic } = await supabase
+      .from("invoices")
+      .select("*", { count: "exact", head: true })
+      .eq("client_id", clientId)
+      .in("status", ["draft", "open"]);
+    openInvoices = ic ?? 0;
   }
 
   return (

@@ -5,7 +5,7 @@ export default async function EscalationsPage() {
   const supabase = await createServerSupabaseClient();
 
   const { data: cases } = await supabase
-    .from("escalation_cases")
+    .from("escalations")
     .select("id, deal_id, reason, severity, status, summary, created_at")
     .order("created_at", { ascending: false });
 

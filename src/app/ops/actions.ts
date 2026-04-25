@@ -10,8 +10,8 @@ export async function approveDocument(documentId: string) {
     .from("documents")
     .update({
       status: "approved",
-      approved_at: new Date().toISOString(),
-      approved_by: user.id,
+      reviewed_at: new Date().toISOString(),
+      reviewed_by_user_id: user.id,
     })
     .eq("id", documentId);
   if (error) {
@@ -26,11 +26,11 @@ export async function createContractDraft(dealId: string, templateId: string) {
     .from("documents")
     .insert({
       deal_id: dealId,
-      kind: "contract",
+      kind: "contract_draft",
       status: "draft",
-      template_id: templateId,
-      requires_approval: true,
-      metadata_json: { source: "ops_console" },
+      title: `Contract draft ${templateId}`,
+      requires_review: true,
+      created_by_agent: "ops_console",
     })
     .select("id")
     .single();
@@ -47,13 +47,23 @@ export async function createContractDraft(dealId: string, templateId: string) {
 
 export async function createStripeInvoice(dealId: string, amountCents: number) {
   const { supabase } = await requireOps();
+  const { data: deal } = await supabase
+    .from("deals")
+    .select("client_id")
+    .eq("id", dealId)
+    .single();
   const { data: inv, error } = await supabase
     .from("invoices")
     .insert({
+      client_id: deal?.client_id,
       deal_id: dealId,
       status: "draft",
       amount_cents: amountCents,
-      currency: "usd",
+      currency: "USD",
+      due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10),
+      line_items: [{ description: "Brand partnership", amount_cents: amountCents }],
     })
     .select("id")
     .single();
@@ -71,10 +81,10 @@ export async function createStripeInvoice(dealId: string, amountCents: number) {
 export async function resolveEscalation(caseId: string, notes: string) {
   const { supabase } = await requireOps();
   const { error } = await supabase
-    .from("escalation_cases")
+    .from("escalations")
     .update({
       status: "resolved",
-      resolution_notes: notes,
+      resolution_note: notes,
       resolved_at: new Date().toISOString(),
     })
     .eq("id", caseId);

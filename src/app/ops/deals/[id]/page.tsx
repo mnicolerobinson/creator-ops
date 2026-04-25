@@ -13,7 +13,7 @@ export default async function OpsDealDetailPage({
   const { data: deal } = await supabase
     .from("deals")
     .select(
-      "id, title, stage, qualification_status, fit_score, budget_cents, campaign_type, platform, rights_summary",
+      "id, title, stage, qualification_reason, qualification_score, quoted_amount_cents, campaign_type, platforms, usage_rights_requested",
     )
     .eq("id", id)
     .single();
@@ -23,20 +23,20 @@ export default async function OpsDealDetailPage({
   }
 
   const { data: comms } = await supabase
-    .from("communications")
-    .select("id, direction, status, subject, body, confidence_score, created_at")
+    .from("messages")
+    .select("id, direction, status, subject, body_text, draft_confidence, created_at")
     .eq("deal_id", id)
     .order("created_at", { ascending: false });
 
   const { data: docs } = await supabase
     .from("documents")
-    .select("id, kind, status, template_id, documenso_document_id, requires_approval")
+    .select("id, kind, status, documenso_document_id, requires_review")
     .eq("deal_id", id)
     .order("created_at", { ascending: false });
 
   const { data: invoices } = await supabase
     .from("invoices")
-    .select("id, status, amount_cents, stripe_invoice_id, due_at, paid_at")
+    .select("id, status, amount_cents, stripe_invoice_id, due_date, paid_at")
     .eq("deal_id", id)
     .order("created_at", { ascending: false });
 
@@ -45,9 +45,9 @@ export default async function OpsDealDetailPage({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{deal.title}</h1>
         <p className="mt-2 text-sm text-zinc-600">
-          {deal.stage} · {deal.qualification_status}
-          {deal.fit_score != null
-            ? ` · fit ${Number(deal.fit_score).toFixed(3)}`
+          {deal.stage} · {deal.qualification_reason ?? "Qualification pending"}
+          {deal.qualification_score != null
+            ? ` · fit ${Number(deal.qualification_score).toFixed(2)}`
             : ""}
         </p>
       </div>
@@ -66,16 +66,16 @@ export default async function OpsDealDetailPage({
             >
               <p className="font-medium text-zinc-900">
                 {c.direction} · {c.status}
-                {c.confidence_score != null
-                  ? ` · conf ${Number(c.confidence_score).toFixed(3)}`
+                {c.draft_confidence != null
+                  ? ` · conf ${Number(c.draft_confidence).toFixed(2)}`
                   : ""}
               </p>
               {c.subject ? (
                 <p className="mt-1 text-zinc-700">{c.subject}</p>
               ) : null}
-              {c.body ? (
+              {c.body_text ? (
                 <p className="mt-2 whitespace-pre-wrap text-zinc-600">
-                  {c.body}
+                  {c.body_text}
                 </p>
               ) : null}
             </li>
@@ -102,7 +102,7 @@ export default async function OpsDealDetailPage({
                   ? ` · Documenso ${d.documenso_document_id}`
                   : ""}
               </span>
-              {d.status === "pending_approval" && d.requires_approval ? (
+              {d.status === "pending_review" && d.requires_review ? (
                 <ApproveButton documentId={d.id} />
               ) : null}
             </li>

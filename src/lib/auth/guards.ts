@@ -10,17 +10,24 @@ export async function requireUser() {
     redirect("/login");
   }
   const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, creator_id")
+    .from("user_profiles")
+    .select("role")
     .eq("id", user.id)
     .single();
 
-  return { user, profile, supabase };
+  const { data: clientAccess } = await supabase
+    .from("user_clients")
+    .select("client_id, access_level")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+
+  return { user, profile, clientAccess, supabase };
 }
 
 export async function requireOps() {
   const ctx = await requireUser();
-  if (ctx.profile?.role !== "ops") {
+  if (!["superadmin", "operator"].includes(ctx.profile?.role ?? "")) {
     redirect("/portal");
   }
   return ctx;
@@ -28,7 +35,7 @@ export async function requireOps() {
 
 export async function requireCreator() {
   const ctx = await requireUser();
-  if (ctx.profile?.role !== "creator") {
+  if (!["creator", "creator_delegate"].includes(ctx.profile?.role ?? "")) {
     redirect("/ops");
   }
   return ctx;

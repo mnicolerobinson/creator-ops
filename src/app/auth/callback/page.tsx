@@ -12,6 +12,7 @@ function AuthCallbackInner() {
     const run = async () => {
       const code = searchParams.get("code");
       const tokenHash = searchParams.get("token_hash");
+      const next = searchParams.get("next") ?? "/dashboard";
 
       if (!code && !tokenHash) {
         router.replace("/login?error=auth");
@@ -37,7 +38,7 @@ function AuthCallbackInner() {
         return;
       }
 
-      router.replace("/dashboard");
+      router.replace(next);
     };
 
     void run();
