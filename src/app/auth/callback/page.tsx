@@ -17,16 +17,46 @@ function AuthCallbackInner() {
   useEffect(() => {
     const run = async () => {
       const code = searchParams.get("code");
+      const tokenHash = searchParams.get("token_hash");
+      const type = searchParams.get("type") ?? "magiclink";
       const next = searchParams.get("next") ?? "/";
+      const hashParams = new URLSearchParams(
+        window.location.hash.replace(/^#/, ""),
+      );
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
 
-      if (!code) {
+      if (!code && !tokenHash && (!accessToken || !refreshToken)) {
         setMessage("Missing sign-in code. Request a new link from the same browser you use to open it, or copy the link from email into this browser’s address bar.");
         router.replace("/login?error=missing_code");
         return;
       }
 
       const supabase = createClient();
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      let error: Error | null = null;
+
+      if (tokenHash) {
+        const result = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: type as
+            | "signup"
+            | "recovery"
+            | "invite"
+            | "magiclink"
+            | "email_change"
+            | "email",
+        });
+        error = result.error;
+      } else if (code) {
+        const result = await supabase.auth.exchangeCodeForSession(code);
+        error = result.error;
+      } else if (accessToken && refreshToken) {
+        const result = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        error = result.error;
+      }
 
       if (error) {
         setMessage(error.message);
