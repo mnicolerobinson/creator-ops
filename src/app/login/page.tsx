@@ -18,12 +18,14 @@ function LoginForm() {
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        emailRedirectTo: process.env.NEXT_PUBLIC_SITE_URL + "/auth/callback",
+      },
     });
     if (error) {
       setStatus(error.message);
     } else {
-      setStatus("Check your email for the magic link.");
+      setStatus("Check your email for a sign-in link");
     }
   }
 
