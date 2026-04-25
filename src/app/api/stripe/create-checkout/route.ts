@@ -10,7 +10,7 @@ const corsHeaders = {
 };
 
 const checkoutSchema = z.object({
-  tier: z.enum(["starter_ops", "growth_ops", "creator_ceo"]),
+  tier: z.enum(["starter", "growth", "ceo", "starter_ops", "growth_ops", "creator_ceo"]),
 });
 
 function json(data: unknown, init?: ResponseInit) {
@@ -42,12 +42,21 @@ export async function POST(request: Request) {
       return json({ error: "Stripe is not configured" }, { status: 501 });
     }
 
+    const tierMap = {
+      starter: "starter_ops",
+      growth: "growth_ops",
+      ceo: "creator_ceo",
+      starter_ops: "starter_ops",
+      growth_ops: "growth_ops",
+      creator_ceo: "creator_ceo",
+    } as const;
+    const tier = tierMap[parsed.data.tier];
     const priceByTier = {
       starter_ops: env.STRIPE_PRICE_STARTER_OPS,
       growth_ops: env.STRIPE_PRICE_GROWTH_OPS,
       creator_ceo: env.STRIPE_PRICE_CREATOR_CEO,
     };
-    const price = priceByTier[parsed.data.tier];
+    const price = priceByTier[tier];
     if (!price) {
       return json({ error: "Stripe price is not configured" }, { status: 501 });
     }
@@ -59,7 +68,7 @@ export async function POST(request: Request) {
       success_url:
         "https://app.creatrops.com/onboarding/step-1?session_id={CHECKOUT_SESSION_ID}",
       cancel_url: "https://creatrops.com/welcome",
-      metadata: { tier: parsed.data.tier },
+      metadata: { tier },
     });
 
     return json({ url: session.url });
