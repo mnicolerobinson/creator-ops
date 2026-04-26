@@ -29,6 +29,10 @@ function json(request: Request, data: unknown, init?: ResponseInit) {
   });
 }
 
+function normalizeStripePriceId(price: string) {
+  return price.startsWith("price_") ? price : `price_${price}`;
+}
+
 export function OPTIONS(request: Request) {
   return new NextResponse(null, {
     status: 204,
@@ -63,7 +67,8 @@ export async function POST(request: Request) {
       growth_ops: env.STRIPE_PRICE_GROWTH_OPS,
       creator_ceo: env.STRIPE_PRICE_CREATOR_CEO,
     };
-    const price = priceByTier[tier];
+    const rawPrice = priceByTier[tier];
+    const price = rawPrice ? normalizeStripePriceId(rawPrice) : undefined;
     if (!price) {
       return json(request, { error: "Stripe price is not configured" }, { status: 501 });
     }

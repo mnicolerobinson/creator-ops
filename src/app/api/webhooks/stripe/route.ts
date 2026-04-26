@@ -5,8 +5,6 @@ import { subscriptionTiers, type SubscriptionTierKey } from "@/lib/billing/tiers
 import { getEnv } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export const config = { api: { bodyParser: false } };
-
 function referralCodeBase(email: string) {
   return email.split("@")[0]?.replace(/[^a-z0-9]/gi, "").slice(0, 18) || "creator";
 }
