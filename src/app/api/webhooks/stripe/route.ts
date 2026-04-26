@@ -5,6 +5,8 @@ import { subscriptionTiers, type SubscriptionTierKey } from "@/lib/billing/tiers
 import { getEnv } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+export const config = { api: { bodyParser: false } };
+
 function referralCodeBase(email: string) {
   return email.split("@")[0]?.replace(/[^a-z0-9]/gi, "").slice(0, 18) || "creator";
 }
@@ -65,26 +67,30 @@ async function ensureSarahPersona(
   return data.id;
 }
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   const env = getEnv();
   if (!env.STRIPE_SECRET_KEY || !env.STRIPE_WEBHOOK_SECRET) {
     return NextResponse.json({ error: "Stripe not configured" }, { status: 501 });
   }
 
   const stripe = new Stripe(env.STRIPE_SECRET_KEY);
-  const sig = request.headers.get("stripe-signature");
-  const raw = await request.text();
+  const signature = req.headers.get("stripe-signature");
+  const body = await req.text();
 
-  if (!sig) {
+  if (!signature) {
     return NextResponse.json({ error: "Missing signature" }, { status: 400 });
   }
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(raw, sig, env.STRIPE_WEBHOOK_SECRET);
+    event = stripe.webhooks.constructEvent(
+      body,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET!,
+    );
   } catch (err) {
-    const message = err instanceof Error ? err.message : "invalid payload";
-    return NextResponse.json({ error: message }, { status: 400 });
+    console.error("Stripe webhook signature error:", err);
+    return new Response("Webhook signature verification failed", { status: 400 });
   }
 
   const supabase = createAdminClient();
