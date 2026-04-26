@@ -21,7 +21,7 @@ async function sendMagicLinkEmail(args: {
 }) {
   const resend = new Resend(args.apiKey);
   await resend.emails.send({
-    from: "CreatrOps <noreply@ops.creatrops.com>",
+    from: "CreatrOps <noreply@clairenhaus.com>",
     to: args.to,
     subject: "Welcome to CreatrOps — Sign in to complete your setup",
     html: `
