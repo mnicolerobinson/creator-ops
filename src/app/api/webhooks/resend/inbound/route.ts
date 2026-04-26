@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { z } from "zod";
-import { getEnv } from "@/lib/env";
 import {
   enqueuePgBossJob,
   INTAKE_PROCESS_EMAIL_JOB,
@@ -54,26 +53,29 @@ function emailList(
   return list.map(emailFromAddress).filter((email): email is string => Boolean(email));
 }
 
-export async function POST(request: Request) {
-  const env = getEnv();
-  if (!env.RESEND_WEBHOOK_SECRET) {
+export async function POST(req: Request) {
+  const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
+  if (!webhookSecret) {
     return NextResponse.json({ error: "Resend webhook not configured" }, { status: 501 });
   }
 
-  const rawBody = await request.text();
-  let payload: unknown;
+  const wh = new Webhook(webhookSecret);
+  const payload = await req.text();
+  const headers = {
+    "svix-id": req.headers.get("svix-id") ?? "",
+    "svix-timestamp": req.headers.get("svix-timestamp") ?? "",
+    "svix-signature": req.headers.get("svix-signature") ?? "",
+  };
+
+  let event: unknown;
   try {
-    payload = new Webhook(env.RESEND_WEBHOOK_SECRET).verify(rawBody, {
-      "svix-id": request.headers.get("svix-id") ?? "",
-      "svix-timestamp": request.headers.get("svix-timestamp") ?? "",
-      "svix-signature": request.headers.get("svix-signature") ?? "",
-    });
-  } catch (error) {
-    console.error("Resend inbound webhook verification failed:", error);
-    return new Response("Webhook signature verification failed", { status: 400 });
+    event = wh.verify(payload, headers);
+  } catch (err) {
+    console.error("Resend inbound webhook verification failed:", err);
+    return new Response("Invalid signature", { status: 400 });
   }
 
-  const parsed = inboundSchema.safeParse(payload);
+  const parsed = inboundSchema.safeParse(event);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid inbound email payload" }, { status: 400 });
   }
@@ -98,7 +100,7 @@ export async function POST(request: Request) {
       action: "inbound_email.unmatched_persona",
       entity_type: "message",
       entity_id: email.message_id ?? null,
-      diff_json: { to_addresses: toAddresses, payload },
+      diff_json: { to_addresses: toAddresses, payload: event },
     });
     return NextResponse.json({ received: true, matched: false });
   }
@@ -143,7 +145,7 @@ export async function POST(request: Request) {
       from_address: fromAddress,
       to_addresses: toAddresses,
       cc_addresses: ccAddresses,
-      raw_payload: payload as Record<string, unknown>,
+      raw_payload: event as Record<string, unknown>,
       received_at: new Date().toISOString(),
     })
     .select("id")
