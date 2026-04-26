@@ -1,6 +1,14 @@
 import { notFound } from "next/navigation";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { ApproveButton, DealActions } from "./ui";
+import { requireOps } from "@/lib/auth/guards";
+
+function formatMoney(cents: number | null) {
+  if (!cents) return "Budget unknown";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(cents / 100);
+}
 
 export default async function OpsDealDetailPage({
   params,
@@ -8,12 +16,12 @@ export default async function OpsDealDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createServerSupabaseClient();
+  const { supabase, profile, user } = await requireOps();
 
   const { data: deal } = await supabase
     .from("deals")
     .select(
-      "id, title, stage, qualification_reason, qualification_score, quoted_amount_cents, campaign_type, platforms, usage_rights_requested",
+      "id, client_id, primary_contact_id, company_id, assigned_persona_id, title, stage, qualification_reason, qualification_score, quoted_amount_cents, campaign_type, platforms, created_at",
     )
     .eq("id", id)
     .single();
@@ -22,115 +30,135 @@ export default async function OpsDealDetailPage({
     notFound();
   }
 
-  const { data: comms } = await supabase
+  if (profile?.role !== "superadmin") {
+    const { data: access } = await supabase
+      .from("user_clients")
+      .select("client_id")
+      .eq("user_id", user.id)
+      .eq("client_id", deal.client_id)
+      .maybeSingle();
+    if (!access) {
+      notFound();
+    }
+  }
+
+  const [{ data: company }, { data: contact }, { data: persona }, { data: client }] =
+    await Promise.all([
+      deal.company_id
+        ? supabase.from("companies").select("name, website").eq("id", deal.company_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      deal.primary_contact_id
+        ? supabase
+            .from("contacts")
+            .select("full_name, title, email")
+            .eq("id", deal.primary_contact_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      deal.assigned_persona_id
+        ? supabase
+            .from("personas")
+            .select("display_name, title")
+            .eq("id", deal.assigned_persona_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabase.from("clients").select("name").eq("id", deal.client_id).maybeSingle(),
+    ]);
+
+  const { data: messages } = await supabase
     .from("messages")
-    .select("id, direction, status, subject, body_text, draft_confidence, created_at")
-    .eq("deal_id", id)
-    .order("created_at", { ascending: false });
-
-  const { data: docs } = await supabase
-    .from("documents")
-    .select("id, kind, status, documenso_document_id, requires_review")
-    .eq("deal_id", id)
-    .order("created_at", { ascending: false });
-
-  const { data: invoices } = await supabase
-    .from("invoices")
-    .select("id, status, amount_cents, stripe_invoice_id, due_date, paid_at")
+    .select(
+      "id, direction, status, subject, body_text, from_address, to_addresses, created_at, received_at, sent_at",
+    )
     .eq("deal_id", id)
     .order("created_at", { ascending: false });
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{deal.title}</h1>
-        <p className="mt-2 text-sm text-zinc-600">
-          {deal.stage} · {deal.qualification_reason ?? "Qualification pending"}
-          {deal.qualification_score != null
-            ? ` · fit ${Number(deal.qualification_score).toFixed(2)}`
-            : ""}
+      <div className="rounded-3xl border border-[#2A211C] bg-[#0B0B0B] p-6 shadow-2xl shadow-black/30">
+        <p className="text-xs uppercase tracking-[0.35em] text-[#C8102E]">
+          Deal detail
         </p>
+        <h1 className="mt-3 font-serif text-4xl font-semibold tracking-tight text-[#F7F0E8]">
+          {company?.name ?? deal.title}
+        </h1>
+        <p className="mt-2 text-sm text-[#B0A89A]">
+          {client?.name} · {deal.campaign_type ?? "Campaign unknown"} ·{" "}
+          {formatMoney(deal.quoted_amount_cents)}
+        </p>
+        <div className="mt-5 flex flex-wrap gap-2 text-xs">
+          <span className="rounded-full border border-[#C8102E]/40 bg-[#C8102E]/15 px-3 py-1 text-[#FFCED6]">
+            {deal.stage}
+          </span>
+          <span className="rounded-full border border-[#B0A89A]/30 px-3 py-1 text-[#B0A89A]">
+            {persona?.display_name ?? "No persona"}
+          </span>
+          {deal.qualification_score != null ? (
+            <span className="rounded-full border border-[#B0A89A]/30 px-3 py-1 text-[#B0A89A]">
+              Fit {Number(deal.qualification_score).toFixed(2)}
+            </span>
+          ) : null}
+        </div>
       </div>
 
-      <DealActions dealId={deal.id} />
+      <section className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-[#2A211C] bg-[#0B0B0B] p-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-[#8F8678]">Contact</p>
+          <p className="mt-3 font-medium text-[#F7F0E8]">
+            {contact?.full_name ?? "Unknown sender"}
+          </p>
+          <p className="mt-1 text-sm text-[#B0A89A]">{contact?.title}</p>
+          <p className="mt-1 text-sm text-[#B0A89A]">{contact?.email}</p>
+        </div>
+        <div className="rounded-2xl border border-[#2A211C] bg-[#0B0B0B] p-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-[#8F8678]">Brand</p>
+          <p className="mt-3 font-medium text-[#F7F0E8]">
+            {company?.name ?? "Unknown brand"}
+          </p>
+          <p className="mt-1 text-sm text-[#B0A89A]">{company?.website}</p>
+        </div>
+        <div className="rounded-2xl border border-[#2A211C] bg-[#0B0B0B] p-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-[#8F8678]">Platforms</p>
+          <p className="mt-3 text-sm text-[#B0A89A]">
+            {(deal.platforms ?? []).join(", ") || "Not specified"}
+          </p>
+        </div>
+      </section>
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
-          Communications
+      <section className="space-y-4">
+        <h2 className="font-serif text-2xl font-semibold text-[#F7F0E8]">
+          Message timeline
         </h2>
-        <ul className="space-y-3">
-          {(comms ?? []).map((c) => (
+        <ul className="space-y-4">
+          {(messages ?? []).map((message) => (
             <li
-              key={c.id}
-              className="rounded-lg border border-zinc-200 bg-white p-4 text-sm shadow-sm"
+              key={message.id}
+              className="rounded-2xl border border-[#2A211C] bg-[#0B0B0B] p-5 text-sm"
             >
-              <p className="font-medium text-zinc-900">
-                {c.direction} · {c.status}
-                {c.draft_confidence != null
-                  ? ` · conf ${Number(c.draft_confidence).toFixed(2)}`
-                  : ""}
+              <p className="font-medium text-[#F7F0E8]">
+                {message.direction} · {message.status}
               </p>
-              {c.subject ? (
-                <p className="mt-1 text-zinc-700">{c.subject}</p>
+              <p className="mt-1 text-xs text-[#8F8678]">
+                {message.from_address ? `From ${message.from_address}` : ""}
+                {message.to_addresses?.length
+                  ? ` · To ${message.to_addresses.join(", ")}`
+                  : ""}
+                {" · "}
+                {new Date(
+                  message.received_at ?? message.sent_at ?? message.created_at,
+                ).toLocaleString()}
+              </p>
+              {message.subject ? (
+                <p className="mt-3 text-[#F7F0E8]">{message.subject}</p>
               ) : null}
-              {c.body_text ? (
-                <p className="mt-2 whitespace-pre-wrap text-zinc-600">
-                  {c.body_text}
+              {message.body_text ? (
+                <p className="mt-3 whitespace-pre-wrap text-[#B0A89A]">
+                  {message.body_text}
                 </p>
               ) : null}
             </li>
           ))}
-          {(!comms || comms.length === 0) && (
-            <li className="text-sm text-zinc-500">No messages yet.</li>
-          )}
-        </ul>
-      </section>
-
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
-          Documents
-        </h2>
-        <ul className="space-y-2 text-sm">
-          {(docs ?? []).map((d) => (
-            <li
-              key={d.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded border border-zinc-200 bg-white px-3 py-2"
-            >
-              <span>
-                {d.kind} · {d.status}
-                {d.documenso_document_id
-                  ? ` · Documenso ${d.documenso_document_id}`
-                  : ""}
-              </span>
-              {d.status === "pending_review" && d.requires_review ? (
-                <ApproveButton documentId={d.id} />
-              ) : null}
-            </li>
-          ))}
-          {(!docs || docs.length === 0) && (
-            <li className="text-zinc-500">No documents.</li>
-          )}
-        </ul>
-      </section>
-
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
-          Invoices
-        </h2>
-        <ul className="space-y-2 text-sm">
-          {(invoices ?? []).map((inv) => (
-            <li
-              key={inv.id}
-              className="rounded border border-zinc-200 bg-white px-3 py-2"
-            >
-              {inv.status} · {(inv.amount_cents ?? 0) / 100} USD
-              {inv.stripe_invoice_id
-                ? ` · Stripe ${inv.stripe_invoice_id}`
-                : ""}
-            </li>
-          ))}
-          {(!invoices || invoices.length === 0) && (
-            <li className="text-zinc-500">No invoices.</li>
+          {(!messages || messages.length === 0) && (
+            <li className="text-sm text-[#8F8678]">No messages yet.</li>
           )}
         </ul>
       </section>

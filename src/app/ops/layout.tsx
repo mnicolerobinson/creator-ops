@@ -6,26 +6,29 @@ export default async function OpsLayout({ children }: { children: ReactNode }) {
   await requireOps();
 
   return (
-    <div className="min-h-screen bg-zinc-50">
-      <header className="border-b border-zinc-200 bg-white">
+    <div className="min-h-screen bg-[#050505] text-[#F7F0E8]">
+      <header className="border-b border-[#2A211C] bg-[#090909]/95">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
           <div className="flex items-center gap-6">
-            <Link href="/ops" className="font-semibold text-zinc-900">
-              Creator Ops
+            <Link
+              href="/ops"
+              className="font-serif text-xl font-semibold tracking-wide text-[#F7F0E8]"
+            >
+              CreatrOps
             </Link>
-            <nav className="flex gap-4 text-sm text-zinc-600">
-              <Link href="/ops/deals" className="hover:text-zinc-900">
+            <nav className="flex gap-4 text-sm text-[#B0A89A]">
+              <Link href="/ops/deals" className="hover:text-[#F7F0E8]">
                 Deals
               </Link>
-              <Link href="/ops/escalations" className="hover:text-zinc-900">
+              <Link href="/ops/escalations" className="hover:text-[#F7F0E8]">
                 Escalations
               </Link>
-              <Link href="/ops/audit" className="hover:text-zinc-900">
+              <Link href="/ops/audit" className="hover:text-[#F7F0E8]">
                 Audit log
               </Link>
             </nav>
           </div>
-          <Link href="/portal" className="text-sm text-zinc-600 hover:text-zinc-900">
+          <Link href="/portal" className="text-sm text-[#B0A89A] hover:text-[#F7F0E8]">
             Creator portal
           </Link>
         </div>
