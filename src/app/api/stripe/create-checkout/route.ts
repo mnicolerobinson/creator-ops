@@ -3,71 +3,84 @@ import Stripe from "stripe";
 import { z } from "zod";
 import { getEnv } from "@/lib/env";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "https://creatrops.com",
+const allowedOrigins = new Set(["https://creatrops.com", "https://www.creatrops.com"]);
+
+function corsHeaders(origin: string | null) {
+  return {
+  "Access-Control-Allow-Origin": origin && allowedOrigins.has(origin) ? origin : "https://creatrops.com",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
-};
+  };
+}
 
 const checkoutSchema = z.object({
-  tier: z.enum(["starter_ops", "growth_ops", "creator_ceo"]),
-  email: z.string().email(),
+  tier: z.enum(["starter", "growth", "ceo", "starter_ops", "growth_ops", "creator_ceo"]),
+  email: z.string().email().optional(),
 });
 
-function json(data: unknown, init?: ResponseInit) {
+function json(request: Request, data: unknown, init?: ResponseInit) {
   return NextResponse.json(data, {
     ...init,
     headers: {
-      ...corsHeaders,
+      ...corsHeaders(request.headers.get("origin")),
       ...init?.headers,
     },
   });
 }
 
-export function OPTIONS() {
+export function OPTIONS(request: Request) {
   return new NextResponse(null, {
     status: 204,
-    headers: corsHeaders,
+    headers: corsHeaders(request.headers.get("origin")),
   });
 }
 
 export async function POST(request: Request) {
   const parsed = checkoutSchema.safeParse(await request.json());
   if (!parsed.success) {
-    return json({ error: "Invalid checkout request" }, { status: 400 });
+    return json(request, { error: "Invalid checkout request" }, { status: 400 });
   }
 
   try {
     const env = getEnv();
     if (!env.STRIPE_SECRET_KEY) {
-      return json({ error: "Stripe is not configured" }, { status: 501 });
+      return json(request, { error: "Stripe is not configured" }, { status: 501 });
     }
 
+    const tierMap = {
+      starter: "starter_ops",
+      growth: "growth_ops",
+      ceo: "creator_ceo",
+      starter_ops: "starter_ops",
+      growth_ops: "growth_ops",
+      creator_ceo: "creator_ceo",
+    } as const;
+    const tier = tierMap[parsed.data.tier];
     const priceByTier = {
       starter_ops: env.STRIPE_PRICE_STARTER_OPS,
       growth_ops: env.STRIPE_PRICE_GROWTH_OPS,
       creator_ceo: env.STRIPE_PRICE_CREATOR_CEO,
     };
-    const price = priceByTier[parsed.data.tier];
+    const price = priceByTier[tier];
     if (!price) {
-      return json({ error: "Stripe price is not configured" }, { status: 501 });
+      return json(request, { error: "Stripe price is not configured" }, { status: 501 });
     }
 
     const stripe = new Stripe(env.STRIPE_SECRET_KEY);
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
-      customer_email: parsed.data.email,
+      ...(parsed.data.email ? { customer_email: parsed.data.email } : {}),
       line_items: [{ price, quantity: 1 }],
       success_url:
         "https://app.creatrops.com/onboarding/step-1?session_id={CHECKOUT_SESSION_ID}",
       cancel_url: "https://creatrops.com/welcome",
-      metadata: { tier: parsed.data.tier },
+      metadata: { tier },
     });
 
-    return json({ url: session.url });
+    return json(request, { url: session.url });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unable to create checkout session";
-    return json({ error: message }, { status: 500 });
+    return json(request, { error: message }, { status: 500 });
   }
 }
