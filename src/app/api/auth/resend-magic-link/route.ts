@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
   const resend = new Resend(env.RESEND_API_KEY);
   await resend.emails.send({
-    from: env.EMAIL_FROM ?? "CreatrOps <ops@clairenhaus.com>",
+    from: "CreatrOps <noreply@clairenhaus.com>",
     to: parsed.data.email,
     subject: "Your secure CreatrOps sign-in link",
     text: `Access your CreatrOps dashboard here: ${data.properties.action_link}`,
