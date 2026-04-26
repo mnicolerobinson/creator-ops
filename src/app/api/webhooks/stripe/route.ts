@@ -14,6 +14,38 @@ function getStripeId(value: string | { id?: string } | null | undefined) {
   return typeof value === "string" ? value : value.id ?? null;
 }
 
+function getWebhookSecrets(env: ReturnType<typeof getEnv>) {
+  return [
+    env.STRIPE_WEBHOOK_SECRET,
+    env.STRIPE_WEBHOOK_SECRET_TEST,
+    env.STRIPE_WEBHOOK_SECRET_LIVE,
+  ].filter((secret, index, secrets): secret is string => {
+    return Boolean(secret) && secrets.indexOf(secret) === index;
+  });
+}
+
+function constructStripeEvent({
+  stripe,
+  body,
+  signature,
+  secrets,
+}: {
+  stripe: Stripe;
+  body: string;
+  signature: string;
+  secrets: string[];
+}) {
+  let lastError: unknown;
+  for (const secret of secrets) {
+    try {
+      return stripe.webhooks.constructEvent(body, signature, secret);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError ?? new Error("Stripe webhook signature verification failed.");
+}
+
 async function sendMagicLinkEmail(args: {
   apiKey: string;
   to: string;
@@ -67,7 +99,8 @@ async function ensureSarahPersona(
 
 export async function POST(req: Request) {
   const env = getEnv();
-  if (!env.STRIPE_SECRET_KEY || !env.STRIPE_WEBHOOK_SECRET) {
+  const webhookSecrets = getWebhookSecrets(env);
+  if (!env.STRIPE_SECRET_KEY || webhookSecrets.length === 0) {
     return NextResponse.json({ error: "Stripe not configured" }, { status: 501 });
   }
 
@@ -81,13 +114,17 @@ export async function POST(req: Request) {
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(
+    event = constructStripeEvent({
+      stripe,
       body,
       signature,
-      env.STRIPE_WEBHOOK_SECRET,
-    );
+      secrets: webhookSecrets,
+    });
   } catch (err) {
-    console.error("Stripe webhook signature error:", err);
+    console.error("Stripe webhook signature error:", {
+      error: err,
+      configuredSecretCount: webhookSecrets.length,
+    });
     return new Response("Webhook signature verification failed", { status: 400 });
   }
 
