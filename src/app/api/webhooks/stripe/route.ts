@@ -16,19 +16,19 @@ function getStripeId(value: string | { id?: string } | null | undefined) {
 
 async function sendMagicLinkEmail(args: {
   apiKey: string;
-  from: string;
   to: string;
   link: string;
 }) {
   const resend = new Resend(args.apiKey);
   await resend.emails.send({
-    from: args.from,
+    from: "CreatrOps <noreply@ops.creatrops.com>",
     to: args.to,
-    subject: "Your CreatrOps setup link",
-    text: `Your CreatrOps account is ready. Continue setup here: ${args.link}`,
+    subject: "Welcome to CreatrOps — Sign in to complete your setup",
     html: `
-      <p>Your CreatrOps account is ready.</p>
-      <p><a href="${args.link}">Continue your setup</a></p>
+      <h1>Welcome to CreatrOps</h1>
+      <p>Your account is ready. Click below to sign in and complete your onboarding.</p>
+      <a href="${args.link}" style="background:#C8102E;color:white;padding:12px 24px;text-decoration:none;display:inline-block;">Complete Your Setup</a>
+      <p>This link expires in 24 hours.</p>
     `,
   });
 }
@@ -95,10 +95,10 @@ export async function POST(req: Request) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
-    const email = session.customer_details?.email ?? session.customer_email;
+    const customerEmail = session.customer_details?.email ?? session.customer_email;
     const tier = session.metadata?.tier as SubscriptionTierKey | undefined;
 
-    if (!email || !tier || !(tier in subscriptionTiers)) {
+    if (!customerEmail || !tier || !(tier in subscriptionTiers)) {
       return NextResponse.json(
         { error: "Checkout session missing email or tier" },
         { status: 400 },
@@ -111,9 +111,10 @@ export async function POST(req: Request) {
 
     const linkResult = await supabase.auth.admin.generateLink({
       type: "magiclink",
-      email,
+      email: customerEmail,
       options: {
-        redirectTo: "https://app.creatrops.com/onboarding/step-1",
+        redirectTo:
+          "https://app.creatrops.com/auth/callback?next=/onboarding/step-1",
       },
     });
 
@@ -134,11 +135,12 @@ export async function POST(req: Request) {
     const subscriptionId = getStripeId(session.subscription);
     const tierConfig = subscriptionTiers[tier];
     const displayName =
-      session.customer_details?.name ?? referralCodeBase(email).replace(/\d+$/, "");
+      session.customer_details?.name ??
+      referralCodeBase(customerEmail).replace(/\d+$/, "");
 
     await supabase.from("user_profiles").upsert({
       id: userId,
-      email,
+      email: customerEmail,
       full_name: session.customer_details?.name ?? null,
       role: "creator",
     });
@@ -189,8 +191,7 @@ export async function POST(req: Request) {
 
     await sendMagicLinkEmail({
       apiKey: env.RESEND_API_KEY,
-      from: env.EMAIL_FROM ?? "CreatrOps <ops@clairenhaus.com>",
-      to: email,
+      to: customerEmail,
       link: magicLink,
     });
   }
