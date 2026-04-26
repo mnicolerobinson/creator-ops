@@ -7,9 +7,10 @@ const allowedOrigins = new Set(["https://creatrops.com", "https://www.creatrops.
 
 function corsHeaders(origin: string | null) {
   return {
-  "Access-Control-Allow-Origin": origin && allowedOrigins.has(origin) ? origin : "https://creatrops.com",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Origin":
+      origin && allowedOrigins.has(origin) ? origin : "https://creatrops.com",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
   };
 }
 
@@ -36,12 +37,13 @@ export function OPTIONS(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const parsed = checkoutSchema.safeParse(await request.json());
-  if (!parsed.success) {
-    return json(request, { error: "Invalid checkout request" }, { status: 400 });
-  }
-
   try {
+    const parsed = checkoutSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      console.error("Stripe checkout request validation failed", parsed.error);
+      return json(request, { error: "Invalid checkout request" }, { status: 400 });
+    }
+
     const env = getEnv();
     if (!env.STRIPE_SECRET_KEY) {
       return json(request, { error: "Stripe is not configured" }, { status: 501 });
@@ -79,6 +81,7 @@ export async function POST(request: Request) {
 
     return json(request, { url: session.url });
   } catch (error) {
+    console.error("Stripe checkout creation failed", error);
     const message =
       error instanceof Error ? error.message : "Unable to create checkout session";
     return json(request, { error: message }, { status: 500 });
