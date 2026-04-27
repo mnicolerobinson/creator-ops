@@ -1,8 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { saveCreatorProfileWithoutRedirect } from "../actions";
+import { WizardForm } from "../wizard-form";
 
 const followerRanges = [
   "Under 10K",
@@ -30,10 +30,7 @@ const niches = [
 const platforms = ["TikTok", "Instagram", "YouTube", "Twitter/X", "Pinterest", "Snapchat"];
 
 export function CreatorProfileForm() {
-  const router = useRouter();
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
 
   function togglePlatform(platform: string, checked: boolean) {
     setSelectedPlatforms((current) =>
@@ -43,23 +40,12 @@ export function CreatorProfileForm() {
     );
   }
 
-  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    const formData = new FormData(event.currentTarget);
-
-    startTransition(async () => {
-      try {
-        await saveCreatorProfileWithoutRedirect(formData);
-        router.push("/onboarding/step-3");
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not save creator profile.");
-      }
-    });
-  }
-
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
+    <WizardForm
+      action={saveCreatorProfileWithoutRedirect}
+      backHref="/onboarding/step-1"
+      nextHref="/onboarding/step-3"
+    >
       <label className="block text-[11px] font-medium uppercase tracking-[0.25em] text-[#B0A89A]">
         Display name
         <input
@@ -138,19 +124,6 @@ export function CreatorProfileForm() {
         </fieldset>
       ) : null}
 
-      {error ? <p className="text-sm text-[#C9A84C]">{error}</p> : null}
-
-      <div className="flex flex-col gap-3 pt-2">
-        <button
-          disabled={isPending}
-          className="rounded-full bg-[#C8102E] px-5 py-3 text-center text-[11px] font-medium uppercase tracking-[0.25em] text-white transition hover:bg-[#8B0000] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isPending ? "Saving..." : "Save and Continue"}
-        </button>
-        <a href="/dashboard" className="text-center text-sm text-[#B0A89A]">
-          Save and continue later
-        </a>
-      </div>
-    </form>
+    </WizardForm>
   );
 }

@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { saveRateCard } from "../actions";
+import { saveRateCardWithoutRedirect } from "../actions";
 import { StepShell } from "../_components";
+import { WizardForm } from "../wizard-form";
 
 const campaignTypes = [
   ["rate_instagram_reel", "Instagram Reel"],
@@ -61,7 +61,11 @@ export default async function OnboardingStepThree() {
       title="Rate card"
       body="Set your minimums so Sarah knows what to accept, negotiate, or escalate."
     >
-      <form action={saveRateCard} className="space-y-6">
+      <WizardForm
+        action={saveRateCardWithoutRedirect}
+        backHref="/onboarding/step-2"
+        nextHref="/onboarding/step-4"
+      >
         <label className="block rounded-2xl border border-[#C9A84C]/30 bg-[#0B0B0B] p-4 text-[11px] font-medium uppercase tracking-[0.25em] text-[#C9A84C]">
           Minimum budget to respond to
           <input
@@ -110,16 +114,7 @@ export default async function OnboardingStepThree() {
           <span>Set this up later. Sarah will escalate all rate decisions until your card is complete.</span>
         </label>
 
-        <div className="flex flex-col gap-3 pt-2">
-          <button className="rounded-full bg-[#C8102E] px-5 py-3 text-center text-[11px] font-medium uppercase tracking-[0.25em] text-white transition hover:bg-[#8B0000]">
-            Save and Continue
-          </button>
-          <div className="flex items-center justify-between text-sm text-[#B0A89A]">
-            <Link href="/onboarding/step-2">Back</Link>
-            <Link href="/dashboard">Save and continue later</Link>
-          </div>
-        </div>
-      </form>
+      </WizardForm>
     </StepShell>
   );
 }

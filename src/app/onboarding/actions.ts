@@ -126,6 +126,14 @@ export async function saveCreatorProfileWithoutRedirect(formData: FormData) {
 }
 
 export async function saveRateCard(formData: FormData) {
+  await saveRateCardStep(formData, true);
+}
+
+export async function saveRateCardWithoutRedirect(formData: FormData) {
+  await saveRateCardStep(formData, false);
+}
+
+async function saveRateCardStep(formData: FormData, redirectNext: boolean) {
   const setUpLater = formData.get("set_up_later") === "on";
   const rates = {
     instagram_reel: numberValue(formData, "rate_instagram_reel"),
@@ -140,6 +148,7 @@ export async function saveRateCard(formData: FormData) {
 
   await saveOnboardingStep({
     step: 3,
+    redirectNext,
     policyPatch: {
       rate_card: {
         set_up_later: setUpLater,
@@ -158,8 +167,17 @@ export async function saveRateCard(formData: FormData) {
 }
 
 export async function saveBrandPreferences(formData: FormData) {
+  await saveBrandPreferencesStep(formData, true);
+}
+
+export async function saveBrandPreferencesWithoutRedirect(formData: FormData) {
+  await saveBrandPreferencesStep(formData, false);
+}
+
+async function saveBrandPreferencesStep(formData: FormData, redirectNext: boolean) {
   await saveOnboardingStep({
     step: 4,
+    redirectNext,
     policyPatch: {
       blocked_categories: values(formData, "blocked_categories").map((category) =>
         category.toLowerCase(),
@@ -173,10 +191,19 @@ export async function saveBrandPreferences(formData: FormData) {
 }
 
 export async function saveContractSetup(formData: FormData) {
+  await saveContractSetupStep(formData, true);
+}
+
+export async function saveContractSetupWithoutRedirect(formData: FormData) {
+  await saveContractSetupStep(formData, false);
+}
+
+async function saveContractSetupStep(formData: FormData, redirectNext: boolean) {
   const setupPath = value(formData, "setup_path") ?? "template";
 
   await saveOnboardingStep({
     step: 5,
+    redirectNext,
     policyPatch: {
       contract_setup: {
         setup_path: setupPath,
@@ -197,8 +224,17 @@ export async function saveContractSetup(formData: FormData) {
 }
 
 export async function saveInboxSetup(formData: FormData) {
+  await saveInboxSetupStep(formData, true);
+}
+
+export async function saveInboxSetupWithoutRedirect(formData: FormData) {
+  await saveInboxSetupStep(formData, false);
+}
+
+async function saveInboxSetupStep(formData: FormData, redirectNext: boolean) {
   await saveOnboardingStep({
     step: 6,
+    redirectNext,
     policyPatch: {
       inbox_setup: {
         dedicated_email: value(formData, "dedicated_email"),

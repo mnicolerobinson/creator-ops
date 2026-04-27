@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { saveInboxSetup } from "../actions";
+import { saveInboxSetupWithoutRedirect } from "../actions";
 import { StepShell } from "../_components";
+import { WizardForm } from "../wizard-form";
 
 function slug(value: string | null | undefined) {
   return (
@@ -52,7 +52,12 @@ export default async function OnboardingStepSix() {
       title="Inbox setup"
       body="Forward brand inquiries to your dedicated ops inbox so Sarah can start triaging opportunities."
     >
-      <form action={saveInboxSetup} className="space-y-6">
+      <WizardForm
+        action={saveInboxSetupWithoutRedirect}
+        backHref="/onboarding/step-5"
+        nextHref="/onboarding/step-7"
+        showTestButton
+      >
         <input type="hidden" name="dedicated_email" value={dedicatedEmail} />
         <div className="rounded-2xl border border-[#C9A84C]/30 bg-[#0B0B0B] p-5">
           <p className="text-[11px] uppercase tracking-[0.25em] text-[#B0A89A]">
@@ -102,25 +107,7 @@ export default async function OnboardingStepSix() {
           </div>
         </div>
 
-        <button
-          type="submit"
-          name="send_test_email"
-          value="on"
-          className="w-full rounded-full border border-[#C9A84C]/40 px-5 py-3 text-center text-[11px] font-medium uppercase tracking-[0.25em] text-[#C9A84C] transition hover:border-[#C9A84C]"
-        >
-          Send test email
-        </button>
-
-        <div className="flex flex-col gap-3 pt-2">
-          <button className="rounded-full bg-[#C8102E] px-5 py-3 text-center text-[11px] font-medium uppercase tracking-[0.25em] text-white transition hover:bg-[#8B0000]">
-            Save and Continue
-          </button>
-          <div className="flex items-center justify-between text-sm text-[#B0A89A]">
-            <Link href="/onboarding/step-5">Back</Link>
-            <Link href="/dashboard">Save and continue later</Link>
-          </div>
-        </div>
-      </form>
+      </WizardForm>
     </StepShell>
   );
 }

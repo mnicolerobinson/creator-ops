@@ -1,6 +1,6 @@
-import Link from "next/link";
-import { saveBrandPreferences } from "../actions";
+import { saveBrandPreferencesWithoutRedirect } from "../actions";
 import { StepShell } from "../_components";
+import { WizardForm } from "../wizard-form";
 
 const blockedCategories = ["Gambling", "Crypto", "Tobacco", "Firearms", "MLM", "Alcohol"];
 
@@ -11,7 +11,11 @@ export default function OnboardingStepFour() {
       title="Brand preferences"
       body="Set the boundaries Sarah should enforce before a brand reaches your inbox."
     >
-      <form action={saveBrandPreferences} className="space-y-6">
+      <WizardForm
+        action={saveBrandPreferencesWithoutRedirect}
+        backHref="/onboarding/step-3"
+        nextHref="/onboarding/step-5"
+      >
         <fieldset className="space-y-3 rounded-2xl border border-[#C9A84C]/25 bg-[#0B0B0B] p-4">
           <legend className="text-[11px] font-medium uppercase tracking-[0.25em] text-[#C9A84C]">
             Blocked categories
@@ -50,16 +54,7 @@ export default function OnboardingStepFour() {
           />
         </label>
 
-        <div className="flex flex-col gap-3 pt-2">
-          <button className="rounded-full bg-[#C8102E] px-5 py-3 text-center text-[11px] font-medium uppercase tracking-[0.25em] text-white transition hover:bg-[#8B0000]">
-            Save and Continue
-          </button>
-          <div className="flex items-center justify-between text-sm text-[#B0A89A]">
-            <Link href="/onboarding/step-3">Back</Link>
-            <Link href="/dashboard">Save and continue later</Link>
-          </div>
-        </div>
-      </form>
+      </WizardForm>
     </StepShell>
   );
 }
