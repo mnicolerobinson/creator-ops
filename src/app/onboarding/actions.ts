@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { requireCreator } from "@/lib/auth/guards";
+import { requireUser } from "@/lib/auth/guards";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -25,12 +25,14 @@ async function saveOnboardingStep({
   step,
   clientPatch,
   policyPatch,
+  redirectNext = true,
 }: {
   step: number;
   clientPatch?: JsonRecord;
   policyPatch: JsonRecord;
+  redirectNext?: boolean;
 }) {
-  const { supabase, user, clientAccess } = await requireCreator();
+  const { supabase, user, clientAccess } = await requireUser();
   if (!clientAccess?.client_id) {
     redirect("/login?error=auth");
   }
@@ -71,10 +73,12 @@ async function saveOnboardingStep({
     .eq("id", clientId);
   if (clientError) throw clientError;
 
-  redirect(`/onboarding/step-${Math.min(step + 1, 7)}`);
+  if (redirectNext) {
+    redirect(`/onboarding/step-${Math.min(step + 1, 7)}`);
+  }
 }
 
-export async function saveCreatorProfile(formData: FormData) {
+function creatorProfilePayload(formData: FormData) {
   const primaryPlatforms = values(formData, "primary_platforms");
   const followerRanges = Object.fromEntries(
     primaryPlatforms.map((platform) => [
@@ -85,8 +89,7 @@ export async function saveCreatorProfile(formData: FormData) {
   const displayName = value(formData, "display_name");
   const primaryNiche = value(formData, "primary_niche");
 
-  await saveOnboardingStep({
-    step: 2,
+  return {
     clientPatch: {
       ...(displayName ? { creator_display_name: displayName, name: displayName } : {}),
       ...(primaryNiche ? { niche: primaryNiche } : {}),
@@ -100,6 +103,25 @@ export async function saveCreatorProfile(formData: FormData) {
         follower_count_range_per_platform: followerRanges,
       },
     },
+  };
+}
+
+export async function saveCreatorProfile(formData: FormData) {
+  const payload = creatorProfilePayload(formData);
+
+  await saveOnboardingStep({
+    step: 2,
+    ...payload,
+  });
+}
+
+export async function saveCreatorProfileWithoutRedirect(formData: FormData) {
+  const payload = creatorProfilePayload(formData);
+
+  await saveOnboardingStep({
+    step: 2,
+    ...payload,
+    redirectNext: false,
   });
 }
 
