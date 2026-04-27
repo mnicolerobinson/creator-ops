@@ -26,11 +26,32 @@ export async function requireUser() {
 }
 
 export async function requireOps() {
-  const ctx = await requireUser();
-  if (!["superadmin", "operator"].includes(ctx.profile?.role ?? "")) {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile || !["superadmin", "operator"].includes(profile.role)) {
     redirect("/dashboard");
   }
-  return ctx;
+
+  const { data: clientAccess } = await supabase
+    .from("user_clients")
+    .select("client_id, access_level")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+
+  return { user, profile, clientAccess, supabase };
 }
 
 /** Ensure operator/superadmin may access this client row (RLS-aligned). */
