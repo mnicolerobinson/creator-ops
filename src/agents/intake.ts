@@ -61,10 +61,7 @@ function budgetToCents(budget: IntakeExtraction["budget"]) {
   return Math.round(budget.amount * 100);
 }
 
-function fallbackBrandName(email: string | null, subject: string | null) {
-  if (subject?.trim()) {
-    return subject.trim().replace(/^re:\s*/i, "").slice(0, 80);
-  }
+function fallbackBrandName(email: string | null) {
   const domain = email?.split("@")[1]?.split(".")[0];
   return domain ? domain.replace(/[-_]/g, " ") : "Inbound opportunity";
 }
@@ -106,6 +103,18 @@ function detectPlatforms(text: string) {
 
 function detectCampaignType(text: string) {
   const lower = text.toLowerCase();
+  if (lower.includes("instagram reel") || lower.includes("ig reel") || lower.includes("reels")) {
+    return "Instagram Reel";
+  }
+  if (lower.includes("instagram story") || lower.includes("ig story")) {
+    return "Instagram Story";
+  }
+  if (lower.includes("instagram post") || lower.includes("ig post")) {
+    return "Instagram Post";
+  }
+  if (lower.includes("tiktok")) return "TikTok";
+  if (lower.includes("youtube short") || lower.includes("shorts")) return "YouTube Shorts";
+  if (lower.includes("youtube")) return "YouTube";
   if (lower.includes("ugc")) return "UGC";
   if (lower.includes("affiliate")) return "Affiliate";
   if (lower.includes("sponsor")) return "Sponsored content";
@@ -115,14 +124,48 @@ function detectCampaignType(text: string) {
 }
 
 function detectBudget(text: string): IntakeExtraction["budget"] {
-  const match = text.match(/\$?\s?(\d{1,3}(?:,\d{3})+|\d{3,6})(?:\.\d{2})?\s?(?:usd|dollars)?/i);
+  const budgetContext = text.match(
+    /(?:budget|rate|fee|pay|payment|compensation|offer|paid|price|amount)[^\n$]{0,80}\$?\s?(\d{1,3}(?:,\d{3})+|\d{2,6})(?:\.\d{2})?\s?(k|usd|dollars)?/i,
+  );
+  const dollarAmount = text.match(
+    /\$\s?(\d{1,3}(?:,\d{3})+|\d{2,6})(?:\.\d{2})?\s?(k)?/i,
+  );
+  const match = budgetContext ?? dollarAmount;
   if (!match?.[1]) return null;
-  const amount = Number(match[1].replace(/,/g, ""));
+  const multiplier = match[2]?.toLowerCase() === "k" ? 1000 : 1;
+  const amount = Number(match[1].replace(/,/g, "")) * multiplier;
   return Number.isFinite(amount) ? { amount, currency: "USD" } : null;
 }
 
 function detectWebsite(text: string) {
   return text.match(/https?:\/\/[^\s<>"')]+/i)?.[0] ?? null;
+}
+
+function cleanBrandCandidate(value: string | undefined) {
+  return value
+    ?.replace(/^["'\s]+|["'\s]+$/g, "")
+    .replace(/\s+(team|brand|company)$/i, "")
+    .trim()
+    .slice(0, 80);
+}
+
+function detectBrandName(text: string, email: string | null) {
+  const patterns = [
+    /(?:brand|company|client)\s*(?:name)?\s*[:\-]\s*([^\n\r]+)/i,
+    /(?:with|from|for)\s+([A-Z][A-Za-z0-9&'.\- ]{2,50})\s+(?:on|for|about|regarding)\s+(?:an?\s+)?(?:instagram|tiktok|youtube|ugc|sponsored|partnership|collab)/i,
+    /([A-Z][A-Za-z0-9&'.\- ]{2,50})\s+(?:would like|is interested|wants|reached out|invited)/i,
+  ];
+  for (const pattern of patterns) {
+    const candidate = cleanBrandCandidate(text.match(pattern)?.[1]);
+    if (candidate) return candidate;
+  }
+
+  const domain = email?.split("@")[1]?.split(".")[0];
+  if (domain && !["gmail", "icloud", "yahoo", "outlook", "hotmail"].includes(domain)) {
+    return domain.replace(/[-_]/g, " ");
+  }
+
+  return fallbackBrandName(email);
 }
 
 function inferSenderName(email: string | null) {
@@ -160,7 +203,7 @@ function heuristicExtractInboundEmail(message: {
       : isSpam
         ? "Detected newsletter, bounce, or spam-like email."
         : null,
-    brandName: fallbackBrandName(message.from_address, message.subject),
+    brandName: detectBrandName(text, message.from_address),
     website: detectWebsite(text),
     campaignType: detectCampaignType(text),
     platforms: detectPlatforms(text),
@@ -190,7 +233,7 @@ async function extractInboundEmail(message: {
       max_tokens: 1200,
       temperature: 0,
       system:
-        "You are the CreatrOps Intake Agent. Extract brand deal CRM fields from inbound creator partnership emails. Return only compact JSON matching this schema: { isSpam:boolean, isOutOfOffice:boolean, spamReason:string|null, brandName:string|null, website:string|null, campaignType:string|null, platforms:string[], budget:{amount:number|null,currency:string|null}|null, timeline:string|null, senderName:string|null, senderTitle:string|null }. Treat newsletters, auto-replies, undeliverable notices, obvious spam, and out-of-office replies as spam or OOO.",
+        "You are the CreatrOps Intake Agent. Extract brand deal CRM fields from inbound creator partnership emails. Return only compact JSON matching this schema: { isSpam:boolean, isOutOfOffice:boolean, spamReason:string|null, brandName:string|null, website:string|null, campaignType:string|null, platforms:string[], budget:{amount:number|null,currency:string|null}|null, timeline:string|null, senderName:string|null, senderTitle:string|null }. Rules: brandName MUST be the brand/company name from the email body, never the email subject. campaignType MUST be the specific requested activation when present, e.g. Instagram Reel, Instagram Story, TikTok, YouTube, YouTube Shorts, UGC, Sponsored content, Affiliate. budget.amount MUST be the numeric budget/rate/offer mentioned in the email body in dollars, with currency USD unless stated otherwise. Treat newsletters, auto-replies, undeliverable notices, obvious spam, and out-of-office replies as spam or OOO.",
       messages: [
         {
           role: "user",
@@ -309,7 +352,7 @@ export async function processInboundEmail(
 
     const brandName =
       extraction.brandName ??
-      fallbackBrandName(message.from_address, message.subject);
+      detectBrandName(getMessageText(message), message.from_address);
     const website = extraction.website;
 
     let company = null as { id: string } | null;
@@ -399,7 +442,7 @@ export async function processInboundEmail(
         primary_contact_id: contact.id,
         company_id: company.id,
         assigned_persona_id: message.persona_id,
-        title: `${brandName} - ${extraction.campaignType ?? "Inbound opportunity"}`,
+        title: brandName,
         stage: "new",
         campaign_type: extraction.campaignType,
         platforms: extraction.platforms,
