@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireOps } from "@/lib/auth/guards";
+import { OpsClientMessages } from "../../client-messages";
 
 function formatMoney(cents: number | null) {
   if (!cents) return "Budget unknown";
@@ -162,6 +163,11 @@ export default async function OpsDealDetailPage({
           )}
         </ul>
       </section>
+
+      <OpsClientMessages
+        clientId={deal.client_id}
+        clientName={client?.name ?? "Client"}
+      />
     </div>
   );
 }

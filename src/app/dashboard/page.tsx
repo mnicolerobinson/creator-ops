@@ -1,11 +1,12 @@
-import { Bell } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import {
   CopyReferralButton,
+  CreatorMessagesPanel,
   LiveActivityFeed,
+  NotificationBellButton,
   SignOutButton,
 } from "../portal/dashboard-client";
 
@@ -76,6 +77,7 @@ export default async function DashboardPage() {
     { data: personaLink },
     { count: referredCount },
     { data: commissions },
+    { count: unreadMessageCount },
   ] = await Promise.all([
     companyIds.length
       ? supabase.from("companies").select("id, name").in("id", companyIds)
@@ -97,6 +99,12 @@ export default async function DashboardPage() {
       .from("affiliate_commissions")
       .select("commission_cents, month_year")
       .eq("affiliate_user_id", user.id),
+    supabase
+      .from("creator_messages")
+      .select("id", { count: "exact", head: true })
+      .eq("client_id", clientId)
+      .eq("sender", "operator")
+      .is("read_at", null),
   ]);
 
   const accountManager = Array.isArray(personaLink?.personas)
@@ -158,14 +166,10 @@ export default async function DashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              aria-label="Notifications"
-              className="relative grid h-10 w-10 place-items-center rounded-full border border-[#2A211C] text-[#C9A84C]"
-            >
-              <Bell size={20} />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#C8102E]" />
-            </button>
+            <NotificationBellButton
+              clientId={clientId}
+              initialUnreadCount={unreadMessageCount ?? 0}
+            />
             <SignOutButton />
           </div>
         </header>
@@ -299,6 +303,10 @@ export default async function DashboardPage() {
                   {accountManager?.sending_email ?? "sarah@ops.creatrops.com"}
                 </p>
               </div>
+              <CreatorMessagesPanel
+                clientId={clientId}
+                accountManagerName={accountManager?.display_name ?? "Sarah Chen"}
+              />
             </div>
 
             <div className="rounded-3xl border border-[#2A211C] bg-[#0B0B0B] p-5">

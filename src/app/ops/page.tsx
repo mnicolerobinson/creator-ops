@@ -44,7 +44,7 @@ export default async function OpsHomePage() {
     new Set((deals ?? []).map((deal) => deal.assigned_persona_id).filter(Boolean)),
   );
 
-  const [{ data: clients }, { data: companies }, { data: personas }] =
+  const [{ data: clients }, { data: companies }, { data: personas }, { data: unreadMessages }] =
     await Promise.all([
       clientIds.length
         ? supabase.from("clients").select("id, name").in("id", clientIds)
@@ -55,6 +55,14 @@ export default async function OpsHomePage() {
       personaIds.length
         ? supabase.from("personas").select("id, display_name").in("id", personaIds)
         : Promise.resolve({ data: [] }),
+      clientIds.length
+        ? supabase
+            .from("creator_messages")
+            .select("client_id")
+            .in("client_id", clientIds)
+            .eq("sender", "creator")
+            .is("read_at", null)
+        : Promise.resolve({ data: [] }),
     ]);
 
   const clientsById = new Map((clients ?? []).map((client) => [client.id, client.name]));
@@ -62,6 +70,13 @@ export default async function OpsHomePage() {
   const personasById = new Map(
     (personas ?? []).map((persona) => [persona.id, persona.display_name]),
   );
+  const unreadByClientId = new Map<string, number>();
+  for (const message of unreadMessages ?? []) {
+    unreadByClientId.set(
+      message.client_id,
+      (unreadByClientId.get(message.client_id) ?? 0) + 1,
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -105,6 +120,11 @@ export default async function OpsHomePage() {
                   <p className="font-medium text-[#F7F0E8]">{brandName}</p>
                   <p className="mt-1 text-xs text-[#8F8678]">
                     {clientsById.get(deal.client_id)}
+                    {unreadByClientId.get(deal.client_id) ? (
+                      <span className="ml-2 rounded-full bg-[#C8102E] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white">
+                        {unreadByClientId.get(deal.client_id)} unread
+                      </span>
+                    ) : null}
                   </p>
                 </div>
                 <div className="col-span-2 text-[#B0A89A]">
