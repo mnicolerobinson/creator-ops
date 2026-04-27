@@ -246,12 +246,25 @@ export async function POST(req: Request) {
     console.log("Resend inbound activity feed written", { messageId: message.id });
   }
 
-  await enqueuePgBossJob(
-    INTAKE_PROCESS_EMAIL_JOB,
-    { messageId: message.id },
-    { singletonKey: `message:${message.id}` },
-  );
-  console.log("Resend inbound intake job enqueued", { messageId: message.id });
+  let intakeJobEnqueued = false;
+  try {
+    await enqueuePgBossJob(
+      INTAKE_PROCESS_EMAIL_JOB,
+      { messageId: message.id },
+      { singletonKey: `message:${message.id}` },
+    );
+    intakeJobEnqueued = true;
+    console.log("Resend inbound intake job enqueued", { messageId: message.id });
+  } catch (queueError) {
+    console.error("Resend inbound intake job enqueue failed after message store:", {
+      messageId: message.id,
+      error: queueError,
+    });
+  }
 
-  return NextResponse.json({ received: true, message_id: message.id });
+  return NextResponse.json({
+    received: true,
+    message_id: message.id,
+    intake_job_enqueued: intakeJobEnqueued,
+  });
 }
