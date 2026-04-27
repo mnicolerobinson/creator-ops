@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { processInboundEmail } from "@/agents/intake";
 import { sendPersonaEmail } from "@/lib/email/resend";
 import { createDraftFromTemplate } from "@/lib/contracts/documenso";
 import { createInvoiceForDeal } from "@/lib/billing/stripe";
@@ -62,6 +63,14 @@ async function runJob(
   payload: Record<string, unknown>,
 ) {
   switch (type) {
+    case "intake.process_email": {
+      const messageId = payload.messageId as string | undefined;
+      if (!messageId) {
+        throw new Error("intake.process_email missing messageId.");
+      }
+      await processInboundEmail(supabase, messageId);
+      return;
+    }
     case "send_scheduled_email": {
       const communicationId = payload.communication_id as string;
       const to = payload.to_email as string;

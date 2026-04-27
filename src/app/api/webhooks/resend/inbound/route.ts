@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { z } from "zod";
-import {
-  enqueuePgBossJob,
-  INTAKE_PROCESS_EMAIL_JOB,
-} from "@/lib/jobs/pgboss";
+import { enqueueJob } from "@/lib/jobs/enqueue";
+import { INTAKE_PROCESS_EMAIL_JOB } from "@/lib/jobs/pgboss";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const emailAddressSchema = z.union([
@@ -248,11 +246,11 @@ export async function POST(req: Request) {
 
   let intakeJobEnqueued = false;
   try {
-    await enqueuePgBossJob(
-      INTAKE_PROCESS_EMAIL_JOB,
-      { messageId: message.id },
-      { singletonKey: `message:${message.id}` },
-    );
+    await enqueueJob(supabase, {
+      jobType: INTAKE_PROCESS_EMAIL_JOB,
+      payload: { messageId: message.id },
+      idempotencyKey: `message:${message.id}`,
+    });
     intakeJobEnqueued = true;
     console.log("Resend inbound intake job enqueued", { messageId: message.id });
   } catch (queueError) {
