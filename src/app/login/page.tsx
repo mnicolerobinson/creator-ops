@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 function LoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [mode, setMode] = useState<"magic_link" | "password">("magic_link");
   const [status, setStatus] = useState<string | null>(null);
 
   const authError = searchParams.get("error");
@@ -16,12 +18,26 @@ function LoginForm() {
     e.preventDefault();
     setStatus(null);
     const supabase = createClient();
+
+    if (mode === "password") {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) {
+        setStatus(error.message);
+        return;
+      }
+      window.location.href = "/dashboard";
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: process.env.NEXT_PUBLIC_SITE_URL + "/auth/callback",
-      },
-    });
+        email,
+        options: {
+          emailRedirectTo: process.env.NEXT_PUBLIC_SITE_URL + "/auth/callback",
+        },
+      });
     if (error) {
       setStatus(error.message);
     } else {
@@ -44,8 +60,8 @@ function LoginForm() {
           Your brand deals. Finally running themselves.
         </h1>
         <p className="mt-5 text-sm leading-8 text-[#B0A89A]">
-          Sign in with your work email. We will send a secure magic link to
-          continue your onboarding or return to your dashboard.
+          Sign in with your work email. Magic link stays primary, and password
+          sign-in is available as a fallback when you need it.
         </p>
       {authError ? (
         <div
@@ -63,7 +79,38 @@ function LoginForm() {
           </p>
         </div>
       ) : null}
-      <form onSubmit={onSubmit} className="mt-8 flex flex-col gap-4">
+      <div className="mt-8 grid grid-cols-2 rounded-full border border-white/10 bg-[#101010] p-1">
+        <button
+          type="button"
+          onClick={() => {
+            setMode("magic_link");
+            setStatus(null);
+          }}
+          className={`rounded-full px-4 py-2 text-[11px] font-medium uppercase tracking-[0.18em] transition ${
+            mode === "magic_link"
+              ? "bg-[#C8102E] text-white"
+              : "text-[#B0A89A] hover:text-[#FAFAFA]"
+          }`}
+        >
+          Send magic link
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setMode("password");
+            setStatus(null);
+          }}
+          className={`rounded-full px-4 py-2 text-[11px] font-medium uppercase tracking-[0.18em] transition ${
+            mode === "password"
+              ? "bg-[#C8102E] text-white"
+              : "text-[#B0A89A] hover:text-[#FAFAFA]"
+          }`}
+        >
+          Sign in with password
+        </button>
+      </div>
+
+      <form onSubmit={onSubmit} className="mt-5 flex flex-col gap-4">
         <label className="text-[11px] font-medium uppercase tracking-[0.25em] text-[#B0A89A]">
           Email
           <input
@@ -75,11 +122,24 @@ function LoginForm() {
             placeholder="you@company.com"
           />
         </label>
+        {mode === "password" ? (
+          <label className="text-[11px] font-medium uppercase tracking-[0.25em] text-[#B0A89A]">
+            Password
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-2 w-full rounded-xl border border-white/10 bg-[#1A1A1A] px-4 py-3 text-base text-[#FAFAFA] outline-none transition focus:border-[#C8102E]"
+              placeholder="Your password"
+            />
+          </label>
+        ) : null}
         <button
           type="submit"
           className="rounded-full bg-[#C8102E] px-5 py-3 text-[11px] font-medium uppercase tracking-[0.25em] text-white transition hover:bg-[#8B0000]"
         >
-          Send link
+          {mode === "password" ? "Sign in" : "Send magic link"}
         </button>
       </form>
       {status ? (
