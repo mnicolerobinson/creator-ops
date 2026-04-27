@@ -33,8 +33,8 @@ export default async function OpsLayout({ children }: { children: ReactNode }) {
               <Link href="/ops/escalations" className={navLink}>
                 Escalations
               </Link>
-              <Link href="/ops/messages" className={navLink}>
-                Message approval
+              <Link href="/ops/approvals" className={navLink}>
+                Approvals
               </Link>
               <Link href="/ops/audit" className={navLink}>
                 Audit

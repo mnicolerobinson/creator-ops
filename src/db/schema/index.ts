@@ -39,6 +39,7 @@ export const messageChannel = pgEnum("message_channel", ["email", "form", "manua
 export const messageStatus = pgEnum("message_status", [
   "pending",
   "queued",
+  "scheduled",
   "sent",
   "delivered",
   "failed",

@@ -272,6 +272,65 @@ async function runJob(
       });
       return;
     }
+    case "send_outbound_message": {
+      const messageId = payload.message_id as string | undefined;
+      if (!messageId) {
+        throw new Error("send_outbound_message missing message_id.");
+      }
+      const { data: msg, error: mErr } = await supabase
+        .from("messages")
+        .select(
+          "id, persona_id, deal_id, client_id, subject, body_text, body_html, to_addresses, thread_id",
+        )
+        .eq("id", messageId)
+        .single();
+      if (mErr || !msg) {
+        throw new Error(mErr?.message ?? "message not found");
+      }
+      const to =
+        Array.isArray(msg.to_addresses) && msg.to_addresses.length > 0
+          ? String(msg.to_addresses[0])
+          : null;
+      if (!to) {
+        throw new Error("message missing to_addresses");
+      }
+      const { data: persona, error: pErr } = await supabase
+        .from("personas")
+        .select("sending_email, display_name")
+        .eq("id", msg.persona_id as string)
+        .maybeSingle();
+      if (pErr || !persona?.sending_email) {
+        throw new Error(pErr?.message ?? "persona sending identity missing");
+      }
+      const html =
+        (msg.body_html as string | null)?.trim() ||
+        `<p>${String(msg.body_text ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/\n/g, "<br/>")}</p>`;
+      const result = await sendPersonaEmail({
+        from: persona.sending_email as string,
+        to,
+        subject: (msg.subject as string) ?? "Message",
+        html,
+        headers:
+          msg.thread_id != null
+            ? {
+                "In-Reply-To": msg.thread_id as string,
+                References: msg.thread_id as string,
+              }
+            : undefined,
+      });
+      await supabase
+        .from("messages")
+        .update({
+          status: result.skipped ? "scheduled" : "sent",
+          sent_at: result.skipped ? null : new Date().toISOString(),
+        })
+        .eq("id", messageId);
+      return;
+    }
     default:
       throw new Error(`unknown job type: ${type}`);
   }

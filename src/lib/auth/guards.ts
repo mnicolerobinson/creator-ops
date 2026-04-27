@@ -28,7 +28,25 @@ export async function requireUser() {
 export async function requireOps() {
   const ctx = await requireUser();
   if (!["superadmin", "operator"].includes(ctx.profile?.role ?? "")) {
-    redirect("/portal");
+    redirect("/dashboard");
+  }
+  return ctx;
+}
+
+/** Ensure operator/superadmin may access this client row (RLS-aligned). */
+export async function requireOpsClientAccess(clientId: string) {
+  const ctx = await requireOps();
+  if (ctx.profile?.role === "superadmin") {
+    return ctx;
+  }
+  const { data } = await ctx.supabase
+    .from("user_clients")
+    .select("client_id")
+    .eq("user_id", ctx.user.id)
+    .eq("client_id", clientId)
+    .maybeSingle();
+  if (!data) {
+    redirect("/ops/clients");
   }
   return ctx;
 }

@@ -11,418 +11,369 @@ function stageClass(stage: string) {
   return "border-[#B0A89A]/30 bg-[#B0A89A]/10 text-[#F7F0E8]";
 }
 
+const pipelineStages = [
+  "new",
+  "qualifying",
+  "qualified",
+  "negotiating",
+  "contract_draft",
+  "contract_sent",
+  "contract_signed",
+  "in_production",
+  "deliverables_submitted",
+  "invoiced",
+] as const;
+
+function monthStartIso() {
+  const n = new Date();
+  return new Date(Date.UTC(n.getFullYear(), n.getMonth(), 1)).toISOString();
+}
+
 export default async function OpsHomePage() {
   const { supabase, profile, user } = await requireOps();
   const allowed = await getOpsAllowedClientIds(supabase, user.id, profile?.role);
 
-  let dealsQuery = supabase
-    .from("deals")
-    .select(
-      "id, title, stage, campaign_type, created_at, client_id, company_id, assigned_persona_id, updated_at",
-    )
-    .order("updated_at", { ascending: false })
-    .limit(40);
+  const emptyUuid = ["00000000-0000-0000-0000-000000000000"] as string[];
 
-  if (allowed) {
-    if (allowed.length === 0) {
-      dealsQuery = dealsQuery.in("client_id", [
-        "00000000-0000-0000-0000-000000000000",
-      ] as string[]);
-    } else {
-      dealsQuery = dealsQuery.in("client_id", allowed);
-    }
+  function scopeClientIdCol<T extends { in: (col: string, ids: string[]) => T }>(q: T): T {
+    if (!allowed) return q;
+    if (allowed.length === 0) return q.in("client_id", emptyUuid);
+    return q.in("client_id", allowed);
   }
 
-  let clientsQuery = supabase
+  let activeClientsQ = supabase
     .from("clients")
-    .select(
-      "id, name, creator_display_name, status, subscription_tier, wizard_step, created_at, onboarding_completed_at",
-    )
-    .order("created_at", { ascending: false })
-    .limit(12);
-
+    .select("id", { count: "exact", head: true })
+    .eq("status", "active");
   if (allowed) {
     if (allowed.length === 0) {
-      clientsQuery = clientsQuery.in("id", [
-        "00000000-0000-0000-0000-000000000000",
-      ] as string[]);
+      activeClientsQ = activeClientsQ.in("id", emptyUuid);
     } else {
-      clientsQuery = clientsQuery.in("id", allowed);
+      activeClientsQ = activeClientsQ.in("id", allowed);
     }
   }
 
-  let messagesQuery = supabase
-    .from("messages")
-    .select("id, client_id, deal_id, subject, body_text, status, created_at, requires_review")
-    .eq("requires_review", true)
-    .order("created_at", { ascending: false })
-    .limit(15);
-
-  if (allowed) {
-    if (allowed.length === 0) {
-      messagesQuery = messagesQuery.in("client_id", [
-        "00000000-0000-0000-0000-000000000000",
-      ] as string[]);
-    } else {
-      messagesQuery = messagesQuery.in("client_id", allowed);
-    }
-  }
-
-  const activeStages = [
-    "new",
-    "qualifying",
-    "qualified",
-    "negotiating",
-    "contract_draft",
-    "contract_sent",
-    "contract_signed",
-    "in_production",
-    "deliverables_submitted",
-    "invoiced",
-  ] as const;
-
-  let activeDealCountQ = supabase
+  let pipelineQ = supabase
     .from("deals")
     .select("id", { count: "exact", head: true })
-    .in("stage", activeStages);
-  if (allowed) {
-    if (allowed.length === 0) {
-      activeDealCountQ = activeDealCountQ.in("client_id", [
-        "00000000-0000-0000-0000-000000000000",
-      ] as string[]);
-    } else {
-      activeDealCountQ = activeDealCountQ.in("client_id", allowed);
-    }
-  }
+    .in("stage", pipelineStages);
+  pipelineQ = allowed
+    ? allowed.length === 0
+      ? pipelineQ.in("client_id", emptyUuid)
+      : pipelineQ.in("client_id", allowed)
+    : pipelineQ;
 
-  let clientTotalQ = supabase.from("clients").select("id", { count: "exact", head: true });
-  if (allowed) {
-    if (allowed.length === 0) {
-      clientTotalQ = clientTotalQ.in("id", [
-        "00000000-0000-0000-0000-000000000000",
-      ] as string[]);
-    } else {
-      clientTotalQ = clientTotalQ.in("id", allowed);
-    }
-  }
+  let draftMsgsQ = supabase
+    .from("messages")
+    .select("id", { count: "exact", head: true })
+    .eq("requires_review", true)
+    .eq("status", "queued");
+  draftMsgsQ = scopeClientIdCol(draftMsgsQ);
+
+  let draftDocsQ = supabase
+    .from("documents")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending_review");
+  draftDocsQ = scopeClientIdCol(draftDocsQ);
+
+  let invoicesRevQ = supabase
+    .from("invoices")
+    .select("amount_cents")
+    .eq("status", "paid")
+    .gte("paid_at", monthStartIso());
+  invoicesRevQ = scopeClientIdCol(invoicesRevQ);
 
   const [
-    { data: deals },
-    { data: clients },
-    { data: approvalMessages },
-    { count: openEscalationCount },
-    { count: clientTotalCount },
-    { count: activeDealCount },
+    { count: activeClientsCount },
+    { count: openEscalationsCount },
+    { count: pipelineDealCount },
+    { count: draftMsgCount },
+    { count: draftDocCount },
+    { data: paidInvoices },
+    { data: activityRows },
+    { data: dealsPreview },
+    { data: escalationsPreview },
   ] = await Promise.all([
-    dealsQuery,
-    clientsQuery,
-    messagesQuery,
+    activeClientsQ,
     supabase
       .from("escalations")
       .select("id", { count: "exact", head: true })
       .in("status", ["open", "in_review"]),
-    clientTotalQ,
-    activeDealCountQ,
+    pipelineQ,
+    draftMsgsQ,
+    draftDocsQ,
+    invoicesRevQ,
+    (async () => {
+      let q = supabase
+        .from("activity_feed")
+        .select("id, client_id, title, body, actor, event_type, created_at")
+        .order("created_at", { ascending: false })
+        .limit(40);
+      if (allowed) {
+        if (allowed.length === 0) {
+          q = q.in("client_id", emptyUuid);
+        } else {
+          q = q.in("client_id", allowed);
+        }
+      }
+      return q;
+    })(),
+    (async () => {
+      let q = supabase
+        .from("deals")
+        .select(
+          "id, title, stage, client_id, company_id, updated_at",
+        )
+        .order("updated_at", { ascending: false })
+        .limit(8);
+      if (allowed) {
+        q =
+          allowed.length === 0
+            ? q.in("client_id", emptyUuid)
+            : q.in("client_id", allowed);
+      }
+      return q;
+    })(),
+    supabase
+      .from("escalations")
+      .select("id, reason, severity, summary, deal_id, created_at")
+      .in("status", ["open", "in_review"])
+      .limit(40),
   ]);
 
-  const { data: escalations } = await supabase
-    .from("escalations")
-    .select("id, reason, severity, status, summary, created_at, deal_id")
-    .in("status", ["open", "in_review"])
-    .order("created_at", { ascending: false })
-    .limit(8);
+  function severityRank(s: string) {
+    const v = (s ?? "").toLowerCase();
+    if (v === "critical") return 0;
+    if (v === "high") return 1;
+    if (v === "medium") return 2;
+    if (v === "low") return 3;
+    return 4;
+  }
+
+  const escalationsSorted = [...(escalationsPreview ?? [])]
+    .sort((a, b) => severityRank(a.severity) - severityRank(b.severity))
+    .slice(0, 5);
+
+  const revenueCents = (paidInvoices ?? []).reduce(
+    (s, row) => s + ((row.amount_cents as number) ?? 0),
+    0,
+  );
+
+  const draftsAwaiting = (draftMsgCount ?? 0) + (draftDocCount ?? 0);
+
+  const actClientIds = Array.from(new Set((activityRows ?? []).map((a) => a.client_id)));
+  const dealPrevIds = Array.from(new Set((dealsPreview ?? []).map((d) => d.client_id)));
+  const [{ data: actClients }, { data: dealClients }] = await Promise.all([
+    actClientIds.length
+      ? supabase.from("clients").select("id, name").in("id", actClientIds)
+      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+    dealPrevIds.length
+      ? supabase.from("clients").select("id, name").in("id", dealPrevIds)
+      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+  ]);
+  const actName = new Map((actClients ?? []).map((c) => [c.id, c.name]));
+  const dealCliName = new Map((dealClients ?? []).map((c) => [c.id, c.name]));
+
   const companyIds = Array.from(
-    new Set((deals ?? []).map((d) => d.company_id).filter(Boolean)),
+    new Set((dealsPreview ?? []).map((d) => d.company_id).filter(Boolean)),
   ) as string[];
-  const personaIds = Array.from(
-    new Set((deals ?? []).map((d) => d.assigned_persona_id).filter(Boolean)),
-  ) as string[];
-  const msgClientIds = Array.from(
-    new Set((approvalMessages ?? []).map((m) => m.client_id)),
-  );
-
-  const dealClientIds = Array.from(new Set((deals ?? []).map((d) => d.client_id)));
-
-  const [
-    { data: companies },
-    { data: personas },
-    { data: messageClients },
-    { data: dealClients },
-  ] = await Promise.all([
-    companyIds.length
-      ? supabase.from("companies").select("id, name").in("id", companyIds)
-      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
-    personaIds.length
-      ? supabase.from("personas").select("id, display_name").in("id", personaIds)
-      : Promise.resolve({ data: [] as { id: string; display_name: string }[] }),
-    msgClientIds.length
-      ? supabase.from("clients").select("id, name").in("id", msgClientIds)
-      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
-    dealClientIds.length
-      ? supabase.from("clients").select("id, name").in("id", dealClientIds)
-      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
-  ]);
-
-  const companiesById = new Map((companies ?? []).map((c) => [c.id, c.name]));
-  const personasById = new Map(
-    (personas ?? []).map((p) => [p.id, p.display_name]),
-  );
-  const clientsById = new Map(
-    (messageClients ?? []).map((c) => [c.id, c.name]),
-  );
-  const clientsNameById = new Map((dealClients ?? []).map((c) => [c.id, c.name]));
-
-  const openEscalationsN = openEscalationCount ?? 0;
-  const pendingApprovals = approvalMessages?.length ?? 0;
+  const { data: companies } = companyIds.length
+    ? await supabase.from("companies").select("id, name").in("id", companyIds)
+    : { data: [] as { id: string; name: string }[] };
+  const coMap = new Map((companies ?? []).map((c) => [c.id, c.name]));
 
   return (
     <div className="space-y-10">
       <div>
         <p className="text-[10px] uppercase tracking-[0.4em] text-[#C8102E]">Command center</p>
         <h1 className="mt-3 font-[var(--font-cormorant)] text-4xl font-light tracking-tight text-[#F7F0E8] md:text-5xl">
-          Ops console
+          Ops dashboard
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#B0A89A]">
-          Pipeline, escalations, and outbound message review. New creator signups appear in the
-          live feed (bottom-right) when you have access to the account.
+          Clairen Haus operator console — pipeline, escalations, approvals, and live onboarding
+          completion alerts.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard
-          label="Clients (in scope)"
-          value={String(clientTotalCount ?? 0)}
+          label="Active clients"
+          value={String(activeClientsCount ?? 0)}
           href="/ops/clients"
         />
         <StatCard
-          label="Open deals (in pipeline)"
-          value={String(activeDealCount ?? 0)}
-          href="/ops/deals"
-        />
-        <StatCard
           label="Open escalations"
-          value={String(openEscalationsN)}
+          value={String(openEscalationsCount ?? 0)}
           href="/ops/escalations"
         />
         <StatCard
-          label="Messages awaiting approval"
-          value={String(pendingApprovals)}
-          href="/ops/messages"
+          label="Deals in pipeline"
+          value={String(pipelineDealCount ?? 0)}
+          href="/ops/deals"
+        />
+        <StatCard
+          label="Drafts awaiting approval"
+          value={String(draftsAwaiting)}
+          href="/ops/approvals"
+          hint={`${draftMsgCount ?? 0} msgs · ${draftDocCount ?? 0} docs`}
+        />
+        <StatCard
+          label="Revenue this month"
+          value={formatUsd(revenueCents)}
+          href="/ops/metrics"
         />
       </div>
 
+      <section>
+        <p className="mb-3 text-[10px] uppercase tracking-[0.35em] text-[#C9A84C]">Shortcuts</p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <QuickLink href="/ops/clients" title="Clients" subtitle="Directory & detail" />
+          <QuickLink href="/ops/deals" title="Deal queue" subtitle="Filters & stages" />
+          <QuickLink href="/ops/escalations" title="Escalations" subtitle="Severity sorted" />
+          <QuickLink href="/ops/approvals" title="Approvals" subtitle="Outbound drafts" />
+          <QuickLink href="/ops/audit" title="Audit log" subtitle="Agent runs" />
+          <QuickLink href="/ops/metrics" title="Metrics" subtitle="Usage & KPIs" />
+        </div>
+      </section>
+
+      <section className="overflow-hidden rounded-2xl border border-[#2A211C] bg-[#0B0B0B]">
+        <div className="border-b border-[#2A211C] px-4 py-3">
+          <h2 className="text-[11px] uppercase tracking-[0.28em] text-[#C9A84C]">
+            Recent activity · all clients
+          </h2>
+        </div>
+        <ul className="divide-y divide-[#1D1713]">
+          {(activityRows ?? []).map((ev) => (
+            <li key={ev.id} className="px-4 py-3 text-sm">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="font-medium text-[#F7F0E8]">{ev.title}</span>
+                <span className="text-[10px] uppercase tracking-wider text-[#6F675E]">
+                  {ev.created_at ? new Date(ev.created_at).toLocaleString() : ""}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-[#6F675E]">
+                {actName.get(ev.client_id) ?? "Client"} · {ev.actor} · {ev.event_type}
+              </p>
+              {ev.body ? (
+                <p className="mt-1 text-xs text-[#8F8678] line-clamp-2">{ev.body}</p>
+              ) : null}
+            </li>
+          ))}
+          {(!activityRows || activityRows.length === 0) && (
+            <li className="px-4 py-10 text-center text-sm text-[#6F675E]">
+              No activity events yet.
+            </li>
+          )}
+        </ul>
+      </section>
+
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="overflow-hidden rounded-2xl border border-[#2A211C] bg-[#0B0B0B] shadow-2xl shadow-black/20">
+        <section className="overflow-hidden rounded-2xl border border-[#2A211C] bg-[#0B0B0B]">
           <div className="flex items-center justify-between border-b border-[#2A211C] px-4 py-3">
             <h2 className="text-[11px] uppercase tracking-[0.28em] text-[#C9A84C]">Deal queue</h2>
-            <Link
-              href="/ops/deals"
-              className="text-[10px] uppercase tracking-[0.2em] text-[#6F675E] hover:text-[#F7F0E8]"
-            >
+            <Link href="/ops/deals" className="text-[10px] uppercase tracking-[0.2em] text-[#6F675E] hover:text-[#F7F0E8]">
               View all →
             </Link>
           </div>
           <div className="divide-y divide-[#1D1713]">
-            {(deals ?? []).slice(0, 8).map((deal) => {
-              const brandName =
-                (deal.company_id ? companiesById.get(deal.company_id) : null) ?? deal.title;
-              const persona =
-                (deal.assigned_persona_id
-                  ? personasById.get(deal.assigned_persona_id)
-                  : null) ?? "—";
-              return (
-                <Link
-                  key={deal.id}
-                  href={`/ops/deals/${deal.id}`}
-                  className="block px-4 py-3.5 transition hover:bg-[#14100D]"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="font-medium text-[#F7F0E8]">{brandName}</p>
-                      <p className="text-xs text-[#6F675E]">
-                        {clientsNameById.get(deal.client_id) ?? "Client"}
-                        {deal.campaign_type ? ` · ${deal.campaign_type}` : ""}
-                      </p>
-                    </div>
-                    <span
-                      className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs ${stageClass(deal.stage)}`}
-                    >
-                      {deal.stage}
-                    </span>
-                  </div>
-                  <p className="mt-1.5 text-[10px] text-[#6F675E]">Persona: {persona}</p>
-                </Link>
-              );
-            })}
-            {(!deals || deals.length === 0) && (
-              <p className="px-4 py-10 text-center text-sm text-[#6F675E]">No deals in view.</p>
-            )}
+            {(dealsPreview ?? []).map((deal) => (
+              <Link
+                key={deal.id}
+                href={`/ops/deals/${deal.id}`}
+                className="block px-4 py-3 transition hover:bg-[#14100D]"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-medium text-[#F7F0E8]">
+                    {(deal.company_id ? coMap.get(deal.company_id) : null) ?? deal.title}
+                  </span>
+                  <span className={`rounded-full border px-2 py-0.5 text-xs ${stageClass(deal.stage)}`}>
+                    {deal.stage}
+                  </span>
+                </div>
+                <p className="mt-1 text-[10px] text-[#6F675E]">
+                  {dealCliName.get(deal.client_id)} · updated{" "}
+                  {deal.updated_at ? new Date(deal.updated_at).toLocaleString() : ""}
+                </p>
+              </Link>
+            ))}
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-2xl border border-[#2A211C] bg-[#0B0B0B] shadow-2xl shadow-black/20">
+        <section className="overflow-hidden rounded-2xl border border-[#2A211C] bg-[#0B0B0B]">
           <div className="flex items-center justify-between border-b border-[#2A211C] px-4 py-3">
             <h2 className="text-[11px] uppercase tracking-[0.28em] text-[#C9A84C]">
-              Escalation queue
+              Escalations
             </h2>
-            <Link
-              href="/ops/escalations"
-              className="text-[10px] uppercase tracking-[0.2em] text-[#6F675E] hover:text-[#F7F0E8]"
-            >
+            <Link href="/ops/escalations" className="text-[10px] uppercase tracking-[0.2em] text-[#6F675E] hover:text-[#F7F0E8]">
               View all →
             </Link>
           </div>
           <ul className="divide-y divide-[#1D1713]">
-            {(escalations ?? []).map((c) => (
-              <li key={c.id} className="px-4 py-3.5">
+            {(escalationsSorted ?? []).map((c) => (
+              <li key={c.id} className="px-4 py-3">
                 <p className="text-sm font-medium text-[#F7F0E8]">
-                  {c.reason}
-                  <span className="ml-2 text-xs font-normal text-[#6F675E]">· sev {c.severity}</span>
+                  {c.reason}{" "}
+                  <span className="text-[#C9A84C]">({c.severity})</span>
                 </p>
                 <p className="mt-1 line-clamp-2 text-xs text-[#8F8678]">{c.summary}</p>
-                <p className="mt-1.5 text-[10px] text-[#6F675E]">
-                  {c.deal_id ? (
-                    <Link
-                      href={`/ops/deals/${c.deal_id}`}
-                      className="text-[#C9A84C] hover:underline"
-                    >
-                      Open deal
-                    </Link>
-                  ) : (
-                    "No deal"
-                  )}
-                  {" · "}
-                  {c.status}
-                </p>
               </li>
             ))}
-            {(!escalations || escalations.length === 0) && (
-              <li className="px-4 py-10 text-center text-sm text-[#6F675E]">
-                No open escalations.
-              </li>
-            )}
           </ul>
         </section>
       </div>
-
-      <section className="overflow-hidden rounded-2xl border border-[#2A211C] bg-[#0B0B0B]">
-        <div className="flex items-center justify-between border-b border-[#2A211C] px-4 py-3">
-          <h2 className="text-[11px] uppercase tracking-[0.28em] text-[#C9A84C]">
-            Message approval
-          </h2>
-          <Link
-            href="/ops/messages"
-            className="text-[10px] uppercase tracking-[0.2em] text-[#6F675E] hover:text-[#F7F0E8]"
-          >
-            Full queue →
-          </Link>
-        </div>
-        <div className="grid grid-cols-12 border-b border-[#1D1713] px-4 py-2 text-[10px] uppercase tracking-[0.2em] text-[#6F675E]">
-          <div className="col-span-3">Client</div>
-          <div className="col-span-4">Subject / preview</div>
-          <div className="col-span-2">Status</div>
-          <div className="col-span-2">Received</div>
-          <div className="col-span-1 text-right" />
-        </div>
-        <div className="divide-y divide-[#1D1713]">
-          {(approvalMessages ?? []).slice(0, 6).map((m) => (
-            <div
-              key={m.id}
-              className="grid grid-cols-12 items-start gap-2 px-4 py-3 text-sm"
-            >
-              <div className="col-span-3 text-[#B0A89A]">
-                {clientsById.get(m.client_id) ?? "—"}
-              </div>
-              <div className="col-span-4">
-                <p className="line-clamp-1 font-medium text-[#F7F0E8]">
-                  {m.subject?.trim() || "(No subject)"}
-                </p>
-                <p className="line-clamp-1 text-xs text-[#6F675E]">
-                  {(m.body_text ?? "").slice(0, 100)}
-                </p>
-              </div>
-              <div className="col-span-2 text-xs text-[#8F8678]">{m.status}</div>
-              <div className="col-span-2 text-xs text-[#6F675E]">
-                {m.created_at ? new Date(m.created_at).toLocaleString() : "—"}
-              </div>
-              <div className="col-span-1 text-right">
-                {m.deal_id ? (
-                  <Link
-                    href={`/ops/deals/${m.deal_id}`}
-                    className="text-[10px] uppercase tracking-wider text-[#C9A84C] hover:underline"
-                  >
-                    Deal
-                  </Link>
-                ) : null}
-              </div>
-            </div>
-          ))}
-          {(!approvalMessages || approvalMessages.length === 0) && (
-            <p className="px-4 py-10 text-center text-sm text-[#6F675E]">
-              No outbound messages pending review.
-            </p>
-          )}
-        </div>
-      </section>
-
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-[11px] uppercase tracking-[0.28em] text-[#C9A84C]">Recent clients</h2>
-          <Link
-            href="/ops/clients"
-            className="text-[10px] uppercase tracking-[0.2em] text-[#6F675E] hover:text-[#F7F0E8]"
-          >
-            All clients →
-          </Link>
-        </div>
-        <div className="overflow-hidden rounded-2xl border border-[#2A211C] bg-[#0B0B0B]">
-          <div className="grid grid-cols-12 border-b border-[#1D1713] px-4 py-2 text-[10px] uppercase tracking-[0.2em] text-[#6F675E]">
-            <div className="col-span-4">Creator</div>
-            <div className="col-span-2">Status</div>
-            <div className="col-span-3">Plan</div>
-            <div className="col-span-1">Step</div>
-            <div className="col-span-2 text-right">Joined</div>
-          </div>
-          <div className="divide-y divide-[#1D1713]">
-            {(clients ?? []).map((c) => (
-              <div key={c.id} className="grid grid-cols-12 items-center gap-2 px-4 py-3 text-sm">
-                <div className="col-span-4">
-                  <p className="font-medium text-[#F7F0E8]">{c.creator_display_name}</p>
-                  <p className="text-xs text-[#6F675E]">{c.name}</p>
-                </div>
-                <div className="col-span-2 text-xs text-[#B0A89A]">{c.status}</div>
-                <div className="col-span-3 text-xs text-[#8F8678]">
-                  {c.subscription_tier?.replace(/_/g, " ") ?? "—"}
-                </div>
-                <div className="col-span-1 text-xs text-[#6F675E]">{c.wizard_step ?? 1}/7</div>
-                <div className="col-span-2 text-right text-xs text-[#6F675E]">
-                  {c.created_at ? new Date(c.created_at).toLocaleDateString() : "—"}
-                </div>
-              </div>
-            ))}
-            {(!clients || clients.length === 0) && (
-              <p className="px-4 py-10 text-center text-sm text-[#6F675E]">
-                No client workspaces in your scope. Superadmin sees all; operators are scoped via
-                assignments.
-              </p>
-            )}
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
 
-function StatCard({ label, value, href }: { label: string; value: string; href: string }) {
+function formatUsd(cents: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(cents / 100);
+}
+
+function StatCard({
+  label,
+  value,
+  href,
+  hint,
+}: {
+  label: string;
+  value: string;
+  href: string;
+  hint?: string;
+}) {
   return (
     <Link
       href={href}
-      className="rounded-2xl border border-[#2A211C] bg-[#0B0B0B] p-5 transition hover:border-[#C9A84C]/35"
+      className="rounded-2xl border border-[#2A211C] bg-[#0B0B0B] p-4 transition hover:border-[#C9A84C]/35 sm:p-5"
     >
-      <p className="text-[10px] uppercase tracking-[0.25em] text-[#6F675E]">{label}</p>
-      <p className="mt-3 font-[var(--font-bebas)] text-4xl tracking-wider text-[#C9A84C]">
+      <p className="text-[10px] uppercase tracking-[0.22em] text-[#6F675E]">{label}</p>
+      <p className="mt-2 font-[var(--font-bebas)] text-3xl tracking-wider text-[#C9A84C] sm:text-4xl">
         {value}
       </p>
+      {hint ? <p className="mt-1 text-[10px] text-[#5c544a]">{hint}</p> : null}
+    </Link>
+  );
+}
+
+function QuickLink({
+  href,
+  title,
+  subtitle,
+}: {
+  href: string;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="rounded-2xl border border-[#2A211C] bg-[#080808] px-4 py-3 transition hover:border-[#C8102E]/35"
+    >
+      <p className="font-medium text-[#F7F0E8]">{title}</p>
+      <p className="mt-1 text-xs text-[#6F675E]">{subtitle}</p>
     </Link>
   );
 }
