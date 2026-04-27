@@ -1,3 +1,4 @@
+import { Bell } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -162,7 +163,7 @@ export default async function DashboardPage() {
               aria-label="Notifications"
               className="relative grid h-10 w-10 place-items-center rounded-full border border-[#2A211C] text-[#C9A84C]"
             >
-              <span className="text-lg">•</span>
+              <Bell size={20} />
               <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#C8102E]" />
             </button>
             <SignOutButton />
