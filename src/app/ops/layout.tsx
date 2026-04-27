@@ -26,6 +26,9 @@ export default async function OpsLayout({ children }: { children: ReactNode }) {
               <Link href="/ops/audit" className="hover:text-[#F7F0E8]">
                 Audit log
               </Link>
+              <Link href="/ops/metrics" className="hover:text-[#F7F0E8]">
+                Metrics
+              </Link>
             </nav>
           </div>
           <Link href="/portal" className="text-sm text-[#B0A89A] hover:text-[#F7F0E8]">

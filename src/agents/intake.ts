@@ -2,6 +2,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { getEnv } from "@/lib/env";
+import { evaluateIntakeSafety } from "@/lib/intake/safety";
+import { haikuCostCentsFromUsage } from "@/lib/llm/haiku-cost";
 import { enqueueJob } from "@/lib/jobs/enqueue";
 
 const model = "claude-haiku-4-5-20251001";
@@ -214,16 +216,18 @@ function heuristicExtractInboundEmail(message: {
   };
 }
 
+type AnthropicUsage = { input_tokens: number; output_tokens: number } | null;
+
 async function extractInboundEmail(message: {
   subject: string | null;
   body_text: string | null;
   body_html: string | null;
   from_address: string | null;
-}) {
+}): Promise<{ extraction: IntakeExtraction; usage: AnthropicUsage }> {
   const apiKey = getEnv().ANTHROPIC_API_KEY;
   if (!apiKey) {
     console.warn("ANTHROPIC_API_KEY missing; using heuristic intake extraction.");
-    return heuristicExtractInboundEmail(message);
+    return { extraction: heuristicExtractInboundEmail(message), usage: null };
   }
 
   try {
@@ -242,6 +246,13 @@ async function extractInboundEmail(message: {
       ],
     });
 
+    const usage: AnthropicUsage = response.usage
+      ? {
+          input_tokens: response.usage.input_tokens,
+          output_tokens: response.usage.output_tokens,
+        }
+      : null;
+
     const text = response.content
       .filter((block) => block.type === "text")
       .map((block) => block.text)
@@ -249,11 +260,41 @@ async function extractInboundEmail(message: {
       .trim();
 
     const json = JSON.parse(text) as unknown;
-    return extractionSchema.parse(json);
+    return { extraction: extractionSchema.parse(json), usage };
   } catch (error) {
     console.error("Anthropic intake extraction failed; using heuristic fallback:", error);
-    return heuristicExtractInboundEmail(message);
+    return { extraction: heuristicExtractInboundEmail(message), usage: null };
   }
+}
+
+async function finishIntakeAgentRun(
+  supabase: SupabaseClient,
+  runId: string | undefined,
+  startedAt: number,
+  args: {
+    status: "success" | "failed";
+    output_json?: unknown;
+    error_text?: string | null;
+    usage: AnthropicUsage;
+    confidence?: number | null;
+  },
+) {
+  if (!runId) return;
+  const cost = haikuCostCentsFromUsage(args.usage);
+  await supabase
+    .from("agent_runs")
+    .update({
+      status: args.status,
+      output_json: args.output_json ?? null,
+      error_text: args.error_text ?? null,
+      llm_cost_cents: cost,
+      llm_tokens_input: args.usage?.input_tokens ?? null,
+      llm_tokens_output: args.usage?.output_tokens ?? null,
+      confidence: args.confidence ?? null,
+      duration_ms: Date.now() - startedAt,
+      ended_at: new Date().toISOString(),
+    })
+    .eq("id", runId);
 }
 
 async function writeActivity(
@@ -309,7 +350,8 @@ export async function processInboundEmail(
     .single();
 
   try {
-    const extraction = await extractInboundEmail(message);
+    const { extraction, usage } = await extractInboundEmail(message);
+    const fullMessageText = getMessageText(message);
     const rawPayload = mergeRawPayload(message.raw_payload, {
       intake: {
         model,
@@ -337,17 +379,77 @@ export async function processInboundEmail(
         metadata: { message_id: messageId, extraction },
       });
 
-      await supabase
-        .from("agent_runs")
-        .update({
-          status: "success",
-          output_json: { ignored: true, reason, extraction },
-          duration_ms: Date.now() - startedAt,
-          ended_at: new Date().toISOString(),
-        })
-        .eq("id", run?.id);
+      await finishIntakeAgentRun(supabase, run?.id, startedAt, {
+        status: "success",
+        output_json: { ignored: true, reason, extraction },
+        usage,
+      });
 
       return { status: "ignored", messageId, reason };
+    }
+
+    const safety = await evaluateIntakeSafety({
+      fullText: fullMessageText,
+      fromAddress: message.from_address,
+      extraction: {
+        brandName: extraction.brandName,
+        website: extraction.website,
+        budget: extraction.budget,
+      },
+    });
+
+    if (safety.shouldEscalate) {
+      const reasonText = `Scam / spam filter: ${safety.flags.join("; ")}${safety.domainAgeNote ? ` (${safety.domainAgeNote})` : ""}`;
+      const rawPayloadSafe = mergeRawPayload(message.raw_payload, {
+        intake: {
+          model,
+          fallback_model: fallbackModel,
+          extraction,
+          safety: { flags: safety.flags, domain_note: safety.domainAgeNote },
+          processed_at: new Date().toISOString(),
+        },
+      });
+
+      await supabase.from("messages").update({ raw_payload: rawPayloadSafe }).eq("id", messageId);
+
+      await supabase.from("escalations").insert({
+        client_id: message.client_id,
+        deal_id: null,
+        agent_run_id: run?.id,
+        reason: "policy_violation",
+        severity: "high",
+        summary: `[Scam / spam filter] ${safety.flags.join("; ")}`,
+        context_json: {
+          intake_safety: {
+            escalation: true,
+            flags: safety.flags,
+            message_id: messageId,
+            domain_note: safety.domainAgeNote,
+          },
+        },
+        suggested_action: "Review the inbound message; block the sender if this is a confirmed scam.",
+        status: "open",
+      });
+
+      await writeActivity(supabase, {
+        clientId: message.client_id,
+        eventType: "intake.safety_escalation",
+        title: "Inbound message flagged by scam / spam checks",
+        body: reasonText,
+        metadata: {
+          message_id: messageId,
+          flags: safety.flags,
+          extraction,
+        },
+      });
+
+      await finishIntakeAgentRun(supabase, run?.id, startedAt, {
+        status: "success",
+        output_json: { ignored: true, safety: safety.flags, extraction },
+        usage,
+      });
+
+      return { status: "ignored", messageId, reason: reasonText };
     }
 
     const brandName =
@@ -495,21 +597,17 @@ export async function processInboundEmail(
       metadata: { deal_id: deal.id, message_id: messageId },
     });
 
-    await supabase
-      .from("agent_runs")
-      .update({
-        status: "success",
-        confidence: "0.90",
-        output_json: {
-          deal_id: deal.id,
-          company_id: company.id,
-          contact_id: contact.id,
-          extraction,
-        },
-        duration_ms: Date.now() - startedAt,
-        ended_at: new Date().toISOString(),
-      })
-      .eq("id", run?.id);
+    await finishIntakeAgentRun(supabase, run?.id, startedAt, {
+      status: "success",
+      confidence: 0.9,
+      output_json: {
+        deal_id: deal.id,
+        company_id: company.id,
+        contact_id: contact.id,
+        extraction,
+      },
+      usage,
+    });
 
     return {
       status: "created",
