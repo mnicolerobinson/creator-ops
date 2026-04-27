@@ -1,0 +1,7 @@
+1:"$Sreact.fragment"
+2:I[15664,["/_next/static/chunks/01xlw8hd842-c.js","/_next/static/chunks/0d3shmwh5_nmn.js","/_next/static/chunks/0vhbihm_-i6vc.js","/_next/static/chunks/0a9cu.2e2ins7.js"],"ResendMagicLink"]
+3:I[22016,["/_next/static/chunks/01xlw8hd842-c.js","/_next/static/chunks/0d3shmwh5_nmn.js","/_next/static/chunks/0vhbihm_-i6vc.js","/_next/static/chunks/0a9cu.2e2ins7.js"],""]
+4:I[97367,["/_next/static/chunks/01xlw8hd842-c.js","/_next/static/chunks/0d3shmwh5_nmn.js"],"OutletBoundary"]
+5:"$Sreact.suspense"
+0:{"rsc":["$","$1","c",{"children":[["$","div",null,{"className":"space-y-8","children":[["$","div",null,{"children":[["$","p",null,{"className":"text-[11px] uppercase tracking-[0.35em] text-[#C9A84C]","children":"Step 7 of 7"}],["$","h1",null,{"className":"mt-4 font-[var(--font-cormorant)] text-5xl font-light leading-none tracking-[-0.03em]","children":"You are live"}],["$","p",null,{"className":"mt-5 text-sm leading-8 text-[#B0A89A]","children":"You're all set! Check your email for your secure sign-in link to access your dashboard."}]]}],[["$","$L2",null,{}],["$","div",null,{"className":"pt-2 text-sm text-[#B0A89A]","children":["$","$L3",null,{"href":"/onboarding/step-6","children":"Back"}]}]]]}],[["$","script","script-0",{"src":"/_next/static/chunks/0a9cu.2e2ins7.js","async":true}]],["$","$L4",null,{"children":["$","$5",null,{"name":"Next.MetadataOutlet","children":"$@6"}]}]]}],"isPartial":false,"staleTime":300,"varyParams":null,"buildId":"VM3A8CcrLUTk8E7j-AzVD"}
+6:null

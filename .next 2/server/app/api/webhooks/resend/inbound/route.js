@@ -1,0 +1,10 @@
+var R=require("../../../../../chunks/[turbopack]_runtime.js")("server/app/api/webhooks/resend/inbound/route.js")
+R.c("server/chunks/[root-of-the-server]__0ta4ii0._.js")
+R.c("server/chunks/_0eog.z_._.js")
+R.c("server/chunks/[root-of-the-server]__039yc7a._.js")
+R.c("server/chunks/src_lib_supabase_admin_ts_072isxd._.js")
+R.c("server/chunks/[root-of-the-server]__11az.09._.js")
+R.c("server/chunks/[root-of-the-server]__0v8bdq7._.js")
+R.c("server/chunks/_next-internal_server_app_api_webhooks_resend_inbound_route_actions_0b.3g~c.js")
+R.m(57025)
+module.exports=R.m(57025).exports

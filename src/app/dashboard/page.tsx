@@ -337,15 +337,16 @@ export default async function DashboardPage() {
             </h2>
             <div className="mt-5 space-y-3">
               {upcomingDeadlines.map((deal) => (
-                <div
+                <Link
                   key={deal.id}
-                  className="rounded-2xl border border-[#2A211C] bg-[#050505] p-4"
+                  href={`/portal/deals/${deal.id}`}
+                  className="block rounded-2xl border border-[#2A211C] bg-[#050505] p-4 transition hover:border-[#C9A84C]/40 hover:bg-[#0C0C0C]"
                 >
                   <p className="text-sm font-medium text-[#F7F0E8]">{deal.title}</p>
                   <p className="mt-1 text-sm text-[#B0A89A]">
                     Due {deal.due_date ? new Date(`${deal.due_date}T00:00:00`).toLocaleDateString() : "soon"}
                   </p>
-                </div>
+                </Link>
               ))}
               {upcomingDeadlines.length === 0 ? (
                 <p className="rounded-2xl border border-dashed border-[#2A211C] p-5 text-sm text-[#8F8678]">
