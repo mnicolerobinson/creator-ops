@@ -93,3 +93,22 @@ export async function resolveEscalation(caseId: string, notes: string) {
   }
   revalidatePath("/ops/escalations");
 }
+
+export async function approveOutboundMessage(messageId: string) {
+  const { supabase, user } = await requireOps();
+  const { error } = await supabase
+    .from("messages")
+    .update({
+      requires_review: false,
+      reviewed_at: new Date().toISOString(),
+      reviewed_by_user_id: user.id,
+      status: "queued",
+    })
+    .eq("id", messageId)
+    .eq("requires_review", true);
+  if (error) {
+    throw error;
+  }
+  revalidatePath("/ops");
+  revalidatePath("/ops/messages");
+}

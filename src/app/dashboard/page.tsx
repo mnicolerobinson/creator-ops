@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { LegalFooterLinks } from "@/components/LegalFooterLinks";
 import {
   CopyReferralButton,
   CreatorMessagesPanel,
@@ -376,6 +377,10 @@ export default async function DashboardPage() {
             </div>
           </div>
         </section>
+
+        <footer className="mt-12 border-t border-[#2A211C] pt-8">
+          <LegalFooterLinks />
+        </footer>
       </div>
     </main>
   );

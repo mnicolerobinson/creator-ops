@@ -17,6 +17,8 @@ function corsHeaders(origin: string | null) {
 const checkoutSchema = z.object({
   tier: z.enum(["starter", "growth", "ceo", "starter_ops", "growth_ops", "creator_ceo"]),
   email: z.string().email().optional(),
+  terms_accepted_at: z.string().optional(),
+  terms_version: z.string().optional(),
 });
 
 function json(request: Request, data: unknown, init?: ResponseInit) {
@@ -74,6 +76,13 @@ export async function POST(request: Request) {
     }
 
     const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+    const termsAccepted = parsed.data.terms_accepted_at?.trim();
+    const termsVersion = parsed.data.terms_version?.trim() ?? "v1.0";
+    const metadata: Record<string, string> = { tier, terms_version: termsVersion };
+    if (termsAccepted) {
+      metadata.terms_accepted_at = termsAccepted;
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       ...(parsed.data.email ? { customer_email: parsed.data.email } : {}),
@@ -81,7 +90,7 @@ export async function POST(request: Request) {
       success_url:
         "https://app.creatrops.com/onboarding/step-1?session_id={CHECKOUT_SESSION_ID}",
       cancel_url: "https://creatrops.com/welcome",
-      metadata: { tier },
+      metadata,
     });
 
     return json(request, { url: session.url });

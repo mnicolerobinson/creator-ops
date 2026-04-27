@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { LegalFooterLinks } from "@/components/LegalFooterLinks";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -73,6 +74,7 @@ export default function LoginPage() {
           {status}
         </p>
       ) : null}
+        <LegalFooterLinks className="mt-10" />
       </div>
     </div>
   );

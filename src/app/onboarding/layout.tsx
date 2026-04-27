@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { LegalFooterLinks } from "@/components/LegalFooterLinks";
 
 function getStep(pathname: string) {
   const match = pathname.match(/\/onboarding\/step-(\d+)/);
@@ -41,6 +42,7 @@ export default function OnboardingLayout({
         </div>
 
         <section className="mt-10">{children}</section>
+        <LegalFooterLinks className="mt-12 pb-4" />
       </div>
     </main>
   );

@@ -122,6 +122,8 @@ export const pregateSubmissions = pgTable("pregate_submissions", {
   resultingClientId: uuid("resulting_client_id"),
   source: text("source").default("cruise_qr"),
   ipAddress: text("ip_address"),
+  termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
+  termsVersion: text("terms_version").default("v1.0"),
   createdAt: now(),
 });
 
