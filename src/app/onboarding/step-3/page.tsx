@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { saveRateCardWithoutRedirect } from "../actions";
+import { getOnboardingData } from "../data";
 import { StepShell } from "../_components";
 import { WizardForm } from "../wizard-form";
 
@@ -51,8 +52,18 @@ async function getSavedNiche() {
   return client?.niche ?? "Lifestyle";
 }
 
+function asRecord(value: unknown) {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
+function centsToDollars(value: unknown) {
+  return typeof value === "number" ? String(value / 100) : "";
+}
+
 export default async function OnboardingStepThree() {
-  const niche = await getSavedNiche();
+  const [{ policy }, niche] = await Promise.all([getOnboardingData(), getSavedNiche()]);
+  const rateCard = asRecord(policy.rate_card);
+  const rates = asRecord(rateCard.rates_cents);
   const benchmarks = benchmarkByNiche[niche] ?? benchmarkByNiche.Other;
 
   return (
@@ -74,6 +85,7 @@ export default async function OnboardingStepThree() {
             min="0"
             step="50"
             required
+            defaultValue={centsToDollars(rateCard.minimum_budget_cents)}
             className="mt-2 w-full rounded-xl border border-white/10 bg-[#141414] px-4 py-3 text-base normal-case tracking-normal text-[#FAFAFA] outline-none transition focus:border-[#C8102E]"
             placeholder="500"
           />
@@ -102,6 +114,7 @@ export default async function OnboardingStepThree() {
                 type="number"
                 min="0"
                 step="50"
+                defaultValue={centsToDollars(rates[String(name)])}
                 className="mt-2 w-full rounded-xl border border-white/10 bg-[#141414] px-4 py-3 text-base text-[#FAFAFA] outline-none transition focus:border-[#C8102E]"
                 placeholder="Rate in USD"
               />
@@ -110,7 +123,12 @@ export default async function OnboardingStepThree() {
         </fieldset>
 
         <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-[#0B0B0B] p-4 text-sm text-[#B0A89A]">
-          <input name="set_up_later" type="checkbox" className="mt-1 h-4 w-4 accent-[#C8102E]" />
+          <input
+            name="set_up_later"
+            type="checkbox"
+            defaultChecked={rateCard.set_up_later === true}
+            className="mt-1 h-4 w-4 accent-[#C8102E]"
+          />
           <span>Set this up later. Sarah will escalate all rate decisions until your card is complete.</span>
         </label>
 

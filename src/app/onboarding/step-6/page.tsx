@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { saveInboxSetupWithoutRedirect } from "../actions";
+import { getOnboardingData } from "../data";
 import { StepShell } from "../_components";
 import { WizardForm } from "../wizard-form";
 
@@ -43,8 +44,16 @@ async function getDedicatedEmail() {
   return `${slug(handle)}@ops.creatrops.com`;
 }
 
+function asRecord(value: unknown) {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
 export default async function OnboardingStepSix() {
-  const dedicatedEmail = await getDedicatedEmail();
+  const [{ policy }, dedicatedEmail] = await Promise.all([
+    getOnboardingData(),
+    getDedicatedEmail(),
+  ]);
+  const inboxSetup = asRecord(policy.inbox_setup);
 
   return (
     <StepShell
@@ -72,6 +81,7 @@ export default async function OnboardingStepSix() {
           Email provider
           <select
             name="forwarding_provider"
+            defaultValue={String(inboxSetup.forwarding_provider ?? "Gmail")}
             className="mt-2 w-full rounded-xl border border-white/10 bg-[#141414] px-4 py-3 text-base normal-case tracking-normal text-[#FAFAFA] outline-none transition focus:border-[#C8102E]"
           >
             <option>Gmail</option>

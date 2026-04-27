@@ -1,10 +1,21 @@
 import { saveBrandPreferencesWithoutRedirect } from "../actions";
+import { getOnboardingData } from "../data";
 import { StepShell } from "../_components";
 import { WizardForm } from "../wizard-form";
 
 const blockedCategories = ["Gambling", "Crypto", "Tobacco", "Firearms", "MLM", "Alcohol"];
 
-export default function OnboardingStepFour() {
+function asRecord(value: unknown) {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
+export default async function OnboardingStepFour() {
+  const { policy } = await getOnboardingData();
+  const savedBlocked = Array.isArray(policy.blocked_categories)
+    ? policy.blocked_categories.map(String)
+    : null;
+  const preferences = asRecord(policy.brand_preferences);
+
   return (
     <StepShell
       eyebrow="Step 4 of 7"
@@ -27,7 +38,11 @@ export default function OnboardingStepFour() {
                   type="checkbox"
                   name="blocked_categories"
                   value={category}
-                  defaultChecked
+                  defaultChecked={
+                    savedBlocked
+                      ? savedBlocked.includes(category.toLowerCase())
+                      : true
+                  }
                   className="h-4 w-4 accent-[#C8102E]"
                 />
                 {category}
@@ -40,6 +55,7 @@ export default function OnboardingStepFour() {
           Brands to always decline
           <input
             name="always_decline"
+            defaultValue={String(preferences.brands_to_always_decline ?? "")}
             className="mt-2 w-full rounded-xl border border-white/10 bg-[#141414] px-4 py-3 text-base normal-case tracking-normal text-[#FAFAFA] outline-none transition focus:border-[#C8102E]"
             placeholder="Brand names, separated by commas"
           />
@@ -49,6 +65,7 @@ export default function OnboardingStepFour() {
           Brands to always accept
           <input
             name="always_accept"
+            defaultValue={String(preferences.brands_to_always_accept ?? "")}
             className="mt-2 w-full rounded-xl border border-white/10 bg-[#141414] px-4 py-3 text-base normal-case tracking-normal text-[#FAFAFA] outline-none transition focus:border-[#C8102E]"
             placeholder="Brand names, separated by commas"
           />

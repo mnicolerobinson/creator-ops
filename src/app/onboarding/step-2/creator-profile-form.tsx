@@ -29,8 +29,17 @@ const niches = [
 
 const platforms = ["TikTok", "Instagram", "YouTube", "Twitter/X", "Pinterest", "Snapchat"];
 
-export function CreatorProfileForm() {
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+type CreatorProfileInitial = {
+  displayName?: string;
+  primaryNiche?: string;
+  primaryPlatforms?: string[];
+  followerRanges?: Record<string, string>;
+};
+
+export function CreatorProfileForm({ initial }: { initial: CreatorProfileInitial }) {
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(
+    initial.primaryPlatforms ?? [],
+  );
 
   function togglePlatform(platform: string, checked: boolean) {
     setSelectedPlatforms((current) =>
@@ -51,6 +60,7 @@ export function CreatorProfileForm() {
         <input
           name="display_name"
           required
+          defaultValue={initial.displayName ?? ""}
           className="mt-2 w-full rounded-xl border border-white/10 bg-[#141414] px-4 py-3 text-base normal-case tracking-normal text-[#FAFAFA] outline-none transition focus:border-[#C8102E]"
           placeholder="How brands will see you"
         />
@@ -62,7 +72,7 @@ export function CreatorProfileForm() {
           name="primary_niche"
           required
           className="mt-2 w-full rounded-xl border border-white/10 bg-[#141414] px-4 py-3 text-base normal-case tracking-normal text-[#FAFAFA] outline-none transition focus:border-[#C8102E]"
-          defaultValue=""
+          defaultValue={initial.primaryNiche ?? ""}
         >
           <option value="" disabled>
             Select your niche
@@ -108,7 +118,7 @@ export function CreatorProfileForm() {
                 name={`follower_count_${platform}`}
                 required
                 className="mt-2 w-full rounded-xl border border-white/10 bg-[#141414] px-4 py-3 text-base text-[#FAFAFA] outline-none transition focus:border-[#C8102E]"
-                defaultValue=""
+                defaultValue={initial.followerRanges?.[platform] ?? ""}
               >
                 <option value="" disabled>
                   Select range

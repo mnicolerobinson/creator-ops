@@ -2,8 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/guards";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 type JsonRecord = Record<string, unknown>;
+const CONTRACT_BUCKET = "client-documents";
 
 function values(formData: FormData, key: string) {
   return formData.getAll(key).map(String).filter(Boolean);
@@ -19,6 +21,53 @@ function numberValue(formData: FormData, key: string) {
   if (!raw) return null;
   const parsed = Number(raw);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function textValue(formData: FormData, key: string) {
+  return value(formData, key) ?? "";
+}
+
+function sanitizeFilename(name: string) {
+  return name.replace(/[^a-z0-9._-]/gi, "-").replace(/-+/g, "-");
+}
+
+async function uploadContractPdf(file: File, clientId: string) {
+  const admin = createAdminClient();
+  const bucketResult = await admin.storage.createBucket(CONTRACT_BUCKET, {
+    public: false,
+  });
+  if (
+    bucketResult.error &&
+    !bucketResult.error.message.toLowerCase().includes("already exists")
+  ) {
+    throw bucketResult.error;
+  }
+
+  const storagePath = `${clientId}/contracts/${Date.now()}-${sanitizeFilename(file.name)}`;
+  const { error: uploadError } = await admin.storage
+    .from(CONTRACT_BUCKET)
+    .upload(storagePath, file, {
+      contentType: file.type || "application/pdf",
+      upsert: true,
+    });
+  if (uploadError) throw uploadError;
+
+  await admin.from("documents").insert({
+    client_id: clientId,
+    kind: "contract_final",
+    status: "draft",
+    title: file.name,
+    storage_path: `${CONTRACT_BUCKET}/${storagePath}`,
+    requires_review: true,
+  });
+
+  return {
+    name: file.name,
+    size: file.size,
+    bucket: CONTRACT_BUCKET,
+    path: storagePath,
+    uploaded_at: new Date().toISOString(),
+  };
 }
 
 async function saveOnboardingStep({
@@ -200,6 +249,26 @@ export async function saveContractSetupWithoutRedirect(formData: FormData) {
 
 async function saveContractSetupStep(formData: FormData, redirectNext: boolean) {
   const setupPath = value(formData, "setup_path") ?? "template";
+  const { clientAccess } = await requireUser();
+  if (!clientAccess?.client_id) {
+    redirect("/login?error=auth");
+  }
+
+  const contractPdf = formData.get("contract_pdf");
+  const existingUpload = {
+    name: textValue(formData, "existing_contract_name"),
+    size: Number(textValue(formData, "existing_contract_size")) || null,
+    bucket: textValue(formData, "existing_contract_bucket"),
+    path: textValue(formData, "existing_contract_path"),
+    uploaded_at: textValue(formData, "existing_contract_uploaded_at"),
+  };
+  const hasExistingUpload = Boolean(existingUpload.name && existingUpload.path);
+  const uploadedPdf =
+    contractPdf instanceof File && contractPdf.size > 0
+      ? await uploadContractPdf(contractPdf, clientAccess.client_id)
+      : hasExistingUpload
+        ? existingUpload
+        : null;
 
   await saveOnboardingStep({
     step: 5,
@@ -207,10 +276,8 @@ async function saveContractSetupStep(formData: FormData, redirectNext: boolean) 
     policyPatch: {
       contract_setup: {
         setup_path: setupPath,
-        uploaded_pdf_name:
-          formData.get("contract_pdf") instanceof File
-            ? (formData.get("contract_pdf") as File).name
-            : null,
+        uploaded_pdf: uploadedPdf,
+        uploaded_pdf_name: uploadedPdf?.name ?? null,
         template: {
           payment_terms: value(formData, "payment_terms"),
           revision_rounds: value(formData, "revision_rounds"),
