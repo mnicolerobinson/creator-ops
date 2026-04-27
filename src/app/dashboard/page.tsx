@@ -220,7 +220,7 @@ export default async function DashboardPage() {
                 href="/portal/deals"
                 className="rounded-full border border-[#C9A84C]/40 px-4 py-2 text-xs uppercase tracking-[0.18em] text-[#C9A84C]"
               >
-                View all
+                View All
               </Link>
             </div>
             <div className="overflow-x-auto">
@@ -319,7 +319,7 @@ export default async function DashboardPage() {
                     href="/portal/referral"
                     className="rounded-full border border-[#2A211C] bg-[#111] px-4 py-2 text-xs uppercase tracking-[0.18em] text-[#F7F0E8] transition hover:border-[#C8102E]/50"
                   >
-                    View referrals
+                    View Referrals
                   </Link>
                   <CopyReferralButton referralLink={referralLink} />
                 </div>

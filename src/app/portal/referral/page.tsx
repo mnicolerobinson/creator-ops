@@ -95,6 +95,9 @@ export default async function ReferralPage() {
     color: { dark: "#0a0a0a", light: "#FAFAFA" },
   });
   const isFounding = data.affiliateTier === "founding";
+  const noReferrals =
+    data.directRows.length === 0 && data.tier2Rows.length === 0;
+  const shareUrl = `https://creatrops.com?ref=${encodeURIComponent(data.code)}`;
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
@@ -120,9 +123,28 @@ export default async function ReferralPage() {
         Share your link. Earn when creators you refer subscribe — no email addresses shown here, ever.
       </p>
 
-      <div className="mt-10 rounded-3xl border border-[#2A211C] bg-[#0B0B0B] p-6">
+      <div className="mt-10 rounded-3xl border border-[#C9A84C]/20 bg-[radial-gradient(ellipse_at_top,rgba(201,168,76,0.06),transparent_50%),#0B0B0B] p-6 shadow-[0_0_60px_rgba(200,16,46,0.08)]">
         <ReferralQrClient referralCode={data.code} qrDataUrl={qrDataUrl} />
       </div>
+
+      {noReferrals ? (
+        <div className="mt-12 flex flex-col items-center text-center">
+          <p
+            className="font-[family-name:var(--font-cormorant)] text-3xl font-light text-[#F7F0E8] md:text-4xl"
+            style={{ fontFamily: "var(--font-cormorant), serif" }}
+          >
+            No active referrals yet
+          </p>
+          <p className="mt-4 max-w-lg text-sm leading-relaxed text-[#8F8678]">
+            Share your referral link to start earning 20% monthly recurring commission
+          </p>
+          <div
+            className="mt-8 h-px w-32 bg-gradient-to-r from-transparent via-[#C9A84C]/45 to-transparent"
+            aria-hidden
+          />
+          <p className="mt-8 break-all font-mono text-sm text-[#C9A84C]">{shareUrl}</p>
+        </div>
+      ) : null}
 
       <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {isFounding ? (
@@ -180,19 +202,21 @@ export default async function ReferralPage() {
         )}
       </div>
 
-      <section className="mt-12 space-y-4">
-        <h2
-          className="font-[family-name:var(--font-cormorant)] text-2xl text-[#F7F0E8]"
-          style={{ fontFamily: "var(--font-cormorant), serif" }}
-        >
-          {isFounding ? "Your direct referrals" : "Your referrals"}
-        </h2>
-        <div className="rounded-3xl border border-[#2A211C] bg-[#0B0B0B] p-4">
-          <ReferralTable rows={data.directRows} />
-        </div>
-      </section>
+      {!noReferrals ? (
+        <section className="mt-12 space-y-4">
+          <h2
+            className="font-[family-name:var(--font-cormorant)] text-2xl text-[#F7F0E8]"
+            style={{ fontFamily: "var(--font-cormorant), serif" }}
+          >
+            {isFounding ? "Your direct referrals" : "Your referrals"}
+          </h2>
+          <div className="rounded-3xl border border-[#2A211C] bg-[#0B0B0B] p-4">
+            <ReferralTable rows={data.directRows} />
+          </div>
+        </section>
+      ) : null}
 
-      {isFounding ? (
+      {!noReferrals && isFounding ? (
         <section className="mt-10 space-y-4">
           <h2
             className="font-[family-name:var(--font-cormorant)] text-2xl text-[#F7F0E8]"

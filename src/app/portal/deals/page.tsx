@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireCreator } from "@/lib/auth/guards";
+import { PortalDealRows } from "./deal-rows";
 
 const STAGE_TABS = [
   { key: "all", label: "All" },
@@ -30,29 +31,6 @@ const TAB_TO_STAGES: Record<string, string[] | null> = {
   invoiced: ["invoiced", "paid"],
   completed: ["completed"],
 };
-
-function formatCurrency(cents: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
-}
-
-function StagePill({ stage }: { stage: string }) {
-  const color =
-    stage === "completed" || stage === "paid"
-      ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-200"
-      : stage === "declined" || stage === "lost"
-        ? "border-zinc-500/30 bg-zinc-700/30 text-zinc-300"
-        : "border-[#C8102E]/40 bg-[#C8102E]/15 text-[#FFCED6]";
-
-  return (
-    <span className={`rounded-full border px-3 py-1 text-xs capitalize ${color}`}>
-      {stage.replace(/_/g, " ")}
-    </span>
-  );
-}
 
 export default async function PortalDealsPage({
   searchParams,
@@ -91,8 +69,8 @@ export default async function PortalDealsPage({
       : Promise.resolve({ data: [] as { id: string; display_name: string }[] }),
   ]);
 
-  const companiesById = new Map((companies ?? []).map((c) => [c.id, c.name]));
-  const personasById = new Map((personas ?? []).map((p) => [p.id, p.display_name]));
+  const companiesById = Object.fromEntries((companies ?? []).map((c) => [c.id, c.name]));
+  const personasById = Object.fromEntries((personas ?? []).map((p) => [p.id, p.display_name]));
 
   const allowedStages = TAB_TO_STAGES[stageKey];
   let filtered = deals ?? [];
@@ -102,11 +80,13 @@ export default async function PortalDealsPage({
   if (q) {
     filtered = filtered.filter((d) => {
       const brand =
-        (d.company_id ? companiesById.get(d.company_id) : null) ?? d.title ?? "";
+        (d.company_id ? companiesById[d.company_id] : null) ?? d.title ?? "";
       const hay = `${brand} ${d.title ?? ""} ${d.campaign_type ?? ""}`.toLowerCase();
       return hay.includes(q);
     });
   }
+
+  const hasAnyDeals = (deals ?? []).length > 0;
 
   function hrefForTab(key: string) {
     const params = new URLSearchParams();
@@ -141,99 +121,94 @@ export default async function PortalDealsPage({
           </div>
         </header>
 
-        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <nav className="flex flex-wrap gap-2">
-            {STAGE_TABS.map((tab) => {
-              const active = stageKey === tab.key;
-              return (
-                <Link
-                  key={tab.key}
-                  href={hrefForTab(tab.key)}
-                  className={`rounded-full px-4 py-2 text-xs font-medium uppercase tracking-[0.14em] transition ${
-                    active
-                      ? "bg-[#C8102E] text-white"
-                      : "border border-[#2A211C] bg-[#0B0B0B] text-[#B0A89A] hover:border-[#C9A84C]/40"
-                  }`}
-                >
-                  {tab.label}
-                </Link>
-              );
-            })}
-          </nav>
+        {hasAnyDeals ? (
+          <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <nav className="flex flex-wrap gap-2">
+              {STAGE_TABS.map((tab) => {
+                const active = stageKey === tab.key;
+                return (
+                  <Link
+                    key={tab.key}
+                    href={hrefForTab(tab.key)}
+                    className={`rounded-full px-4 py-2 text-xs font-medium uppercase tracking-[0.14em] transition ${
+                      active
+                        ? "bg-[#C8102E] text-white"
+                        : "border border-[#2A211C] bg-[#0B0B0B] text-[#B0A89A] hover:border-[#C9A84C]/40"
+                    }`}
+                  >
+                    {tab.label}
+                  </Link>
+                );
+              })}
+            </nav>
 
-          <form action="/portal/deals" method="get" className="flex w-full max-w-md gap-2">
-            {stageKey !== "all" ? (
-              <input type="hidden" name="stage" value={stageKey} />
-            ) : null}
-            <input
-              type="search"
-              name="q"
-              defaultValue={sp.q ?? ""}
-              placeholder="Search brand or campaign…"
-              className="min-w-0 flex-1 rounded-2xl border border-[#2A211C] bg-[#050505] px-4 py-3 text-sm text-[#F7F0E8] placeholder:text-[#6F675E] outline-none focus:border-[#C9A84C]/50"
-            />
-            <button
-              type="submit"
-              className="rounded-2xl bg-[#C8102E] px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-white"
-            >
-              Search
-            </button>
-          </form>
-        </div>
-
-        <div className="overflow-hidden rounded-3xl border border-[#2A211C] bg-[#0B0B0B] p-5">
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="text-xs uppercase tracking-[0.18em] text-[#6F675E]">
-                <tr>
-                  <th className="py-3 pr-4">Brand</th>
-                  <th className="py-3 pr-4">Campaign type</th>
-                  <th className="py-3 pr-4">Value</th>
-                  <th className="py-3 pr-4">Stage</th>
-                  <th className="py-3 pr-4">Last activity</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#1D1713]">
-                {filtered.map((deal) => (
-                  <tr key={deal.id}>
-                    <td className="py-4 pr-4">
-                      <Link href={`/portal/deals/${deal.id}`} className="text-[#F7F0E8] hover:text-[#C9A84C]">
-                        {(deal.company_id ? companiesById.get(deal.company_id) : null) ??
-                          deal.title}
-                      </Link>
-                      <p className="mt-1 text-xs text-[#6F675E]">
-                        {deal.assigned_persona_id
-                          ? personasById.get(deal.assigned_persona_id) ?? "Assigned"
-                          : "Review queue"}
-                      </p>
-                    </td>
-                    <td className="py-4 pr-4 text-[#B0A89A]">
-                      {deal.campaign_type ?? "Not set"}
-                    </td>
-                    <td className="py-4 pr-4 text-[#C9A84C]">
-                      {formatCurrency(deal.quoted_amount_cents ?? 0)}
-                    </td>
-                    <td className="py-4 pr-4">
-                      <StagePill stage={deal.stage} />
-                    </td>
-                    <td className="py-4 pr-4 text-[#8F8678]">
-                      {deal.updated_at
-                        ? new Date(deal.updated_at).toLocaleDateString()
-                        : "Pending"}
-                    </td>
-                  </tr>
-                ))}
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td className="py-14 text-center text-[#8F8678]" colSpan={5}>
-                      No deals match your filters.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
+            <form action="/portal/deals" method="get" className="flex w-full max-w-md gap-2">
+              {stageKey !== "all" ? (
+                <input type="hidden" name="stage" value={stageKey} />
+              ) : null}
+              <input
+                type="search"
+                name="q"
+                defaultValue={sp.q ?? ""}
+                placeholder="Search brand or campaign…"
+                className="min-w-0 flex-1 rounded-2xl border border-[#2A211C] bg-[#050505] px-4 py-3 text-sm text-[#F7F0E8] placeholder:text-[#6F675E] outline-none focus:border-[#C9A84C]/50"
+              />
+              <button
+                type="submit"
+                className="rounded-2xl bg-[#C8102E] px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-white"
+              >
+                Search
+              </button>
+            </form>
           </div>
-        </div>
+        ) : null}
+
+        {!hasAnyDeals ? (
+          <div className="flex flex-col items-center justify-center rounded-3xl border border-[#2A211C] bg-[#0B0B0B] px-6 py-20 text-center">
+            <p className="font-[var(--font-cormorant)] text-3xl font-light text-[#F7F0E8] md:text-4xl">
+              No active deals yet
+            </p>
+            <p className="mt-4 max-w-md text-sm leading-relaxed text-[#8F8678]">
+              Brand inquiries will appear here as they come in
+            </p>
+            <div
+              className="mt-10 h-px w-32 max-w-full bg-gradient-to-r from-transparent via-[#C9A84C]/40 to-transparent"
+              aria-hidden
+            />
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-3xl border border-[#2A211C] bg-[#0B0B0B] p-5">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="text-xs uppercase tracking-[0.18em] text-[#6F675E]">
+                  <tr>
+                    <th className="py-3 pr-4">Brand</th>
+                    <th className="py-3 pr-4">Campaign type</th>
+                    <th className="py-3 pr-4">Value</th>
+                    <th className="py-3 pr-4">Stage</th>
+                    <th className="py-3 pr-4">Last activity</th>
+                    <th className="py-3 pr-4">Due date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.length > 0 ? (
+                    <PortalDealRows
+                      deals={filtered}
+                      companiesById={companiesById}
+                      personasById={personasById}
+                    />
+                  ) : (
+                    <tr>
+                      <td className="py-14 text-center text-[#8F8678]" colSpan={6}>
+                        No deals match your filters.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
