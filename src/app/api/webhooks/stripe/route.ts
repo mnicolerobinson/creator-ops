@@ -5,6 +5,9 @@ import { subscriptionTiers, type SubscriptionTierKey } from "@/lib/billing/tiers
 import { getEnv } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 function referralCodeBase(email: string) {
   return email.split("@")[0]?.replace(/[^a-z0-9]/gi, "").slice(0, 18) || "creator";
 }
@@ -108,6 +111,10 @@ export async function POST(req: Request) {
   const signature = req.headers.get("stripe-signature");
   const body = await req.text();
 
+  console.log("Webhook secret exists:", !!process.env.STRIPE_WEBHOOK_SECRET);
+  console.log("Signature header:", signature?.slice(0, 20));
+  console.log("Body length:", body.length);
+
   if (!signature) {
     return NextResponse.json({ error: "Missing signature" }, { status: 400 });
   }
@@ -119,6 +126,10 @@ export async function POST(req: Request) {
       body,
       signature,
       secrets: webhookSecrets,
+    });
+    console.log("Stripe webhook signature verified:", {
+      eventId: event.id,
+      eventType: event.type,
     });
   } catch (err) {
     console.error("Stripe webhook signature error:", {
