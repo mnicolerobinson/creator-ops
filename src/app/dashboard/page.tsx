@@ -146,7 +146,7 @@ export default async function DashboardPage() {
     .sort((a, b) => String(a.due_date).localeCompare(String(b.due_date)))
     .slice(0, 6);
   const referralCode = profile?.referral_code ?? user.id.slice(0, 8).toUpperCase();
-  const referralLink = `https://creatrops.com/welcome?ref=${referralCode}`;
+  const referralLink = `https://creatrops.com?ref=${referralCode}`;
 
   return (
     <main className="min-h-screen bg-[#050505] text-[#FAFAFA]">
@@ -310,11 +310,19 @@ export default async function DashboardPage() {
             </div>
 
             <div className="rounded-3xl border border-[#2A211C] bg-[#0B0B0B] p-5">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-[11px] uppercase tracking-[0.25em] text-[#8F8678]">
                   Referral snapshot
                 </p>
-                <CopyReferralButton referralLink={referralLink} />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href="/portal/referral"
+                    className="rounded-full border border-[#2A211C] bg-[#111] px-4 py-2 text-xs uppercase tracking-[0.18em] text-[#F7F0E8] transition hover:border-[#C8102E]/50"
+                  >
+                    View referrals
+                  </Link>
+                  <CopyReferralButton referralLink={referralLink} />
+                </div>
               </div>
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <ReferralStat label="Total referred" value={String(referredCount ?? 0)} />
