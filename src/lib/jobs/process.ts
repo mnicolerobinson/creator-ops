@@ -6,6 +6,18 @@ import { createInvoiceForDeal } from "@/lib/billing/stripe";
 
 const MAX_BATCH = 25;
 
+function errorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object" && "message" in error) {
+    return String((error as { message?: unknown }).message);
+  }
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
 export async function processJobQueue(supabase: SupabaseClient): Promise<{
   processed: number;
   errors: string[];
@@ -42,7 +54,7 @@ export async function processJobQueue(supabase: SupabaseClient): Promise<{
       await supabase.from("job_queue").update({ status: "done" }).eq("id", job.id);
       processed += 1;
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
+      const msg = errorMessage(e);
       await supabase
         .from("job_queue")
         .update({
@@ -69,6 +81,22 @@ async function runJob(
         throw new Error("intake.process_email missing messageId.");
       }
       await processInboundEmail(supabase, messageId);
+      return;
+    }
+    case "qualification.score": {
+      const dealId = payload.dealId as string | undefined;
+      if (!dealId) {
+        throw new Error("qualification.score missing dealId.");
+      }
+      await supabase
+        .from("deals")
+        .update({
+          qualification_score: "0.50",
+          qualification_reason:
+            "Queued for qualification. Initial intake used the heuristic fallback parser.",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", dealId);
       return;
     }
     case "send_scheduled_email": {

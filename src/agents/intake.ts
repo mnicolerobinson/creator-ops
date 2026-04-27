@@ -2,12 +2,11 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { getEnv } from "@/lib/env";
-import {
-  enqueuePgBossJob,
-  QUALIFICATION_SCORE_JOB,
-} from "@/lib/jobs/pgboss";
+import { enqueueJob } from "@/lib/jobs/enqueue";
 
 const model = "claude-haiku-4-5-20251001";
+const fallbackModel = "heuristic-fallback";
+const QUALIFICATION_SCORE_JOB = "qualification.score";
 
 const extractionSchema = z.object({
   isSpam: z.boolean(),
@@ -84,6 +83,94 @@ function getMessageText(message: {
   ].join("\n");
 }
 
+function detectPlatforms(text: string) {
+  const platforms = [
+    ["instagram", "Instagram"],
+    ["tiktok", "TikTok"],
+    ["youtube", "YouTube"],
+    ["shorts", "YouTube Shorts"],
+    ["reels", "Instagram Reels"],
+    ["podcast", "Podcast"],
+    ["pinterest", "Pinterest"],
+    ["snapchat", "Snapchat"],
+  ] as const;
+  const lower = text.toLowerCase();
+  return Array.from(
+    new Set(
+      platforms
+        .filter(([needle]) => lower.includes(needle))
+        .map(([, platform]) => platform),
+    ),
+  );
+}
+
+function detectCampaignType(text: string) {
+  const lower = text.toLowerCase();
+  if (lower.includes("ugc")) return "UGC";
+  if (lower.includes("affiliate")) return "Affiliate";
+  if (lower.includes("sponsor")) return "Sponsored content";
+  if (lower.includes("partnership")) return "Partnership";
+  if (lower.includes("collab")) return "Collaboration";
+  return "Inbound partnership";
+}
+
+function detectBudget(text: string): IntakeExtraction["budget"] {
+  const match = text.match(/\$?\s?(\d{1,3}(?:,\d{3})+|\d{3,6})(?:\.\d{2})?\s?(?:usd|dollars)?/i);
+  if (!match?.[1]) return null;
+  const amount = Number(match[1].replace(/,/g, ""));
+  return Number.isFinite(amount) ? { amount, currency: "USD" } : null;
+}
+
+function detectWebsite(text: string) {
+  return text.match(/https?:\/\/[^\s<>"')]+/i)?.[0] ?? null;
+}
+
+function inferSenderName(email: string | null) {
+  const local = email?.split("@")[0];
+  if (!local) return null;
+  return local
+    .split(/[._-]/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function heuristicExtractInboundEmail(message: {
+  subject: string | null;
+  body_text: string | null;
+  body_html: string | null;
+  from_address: string | null;
+}): IntakeExtraction {
+  const text = getMessageText(message);
+  const lower = text.toLowerCase();
+  const isOutOfOffice =
+    lower.includes("out of office") ||
+    lower.includes("automatic reply") ||
+    lower.includes("auto-reply");
+  const isSpam =
+    lower.includes("unsubscribe") ||
+    lower.includes("mailer-daemon") ||
+    lower.includes("delivery status notification");
+
+  return {
+    isSpam,
+    isOutOfOffice,
+    spamReason: isOutOfOffice
+      ? "Detected automatic/out-of-office reply."
+      : isSpam
+        ? "Detected newsletter, bounce, or spam-like email."
+        : null,
+    brandName: fallbackBrandName(message.from_address, message.subject),
+    website: detectWebsite(text),
+    campaignType: detectCampaignType(text),
+    platforms: detectPlatforms(text),
+    budget: detectBudget(text),
+    timeline: null,
+    senderName: inferSenderName(message.from_address),
+    senderTitle: null,
+  };
+}
+
 async function extractInboundEmail(message: {
   subject: string | null;
   body_text: string | null;
@@ -92,32 +179,38 @@ async function extractInboundEmail(message: {
 }) {
   const apiKey = getEnv().ANTHROPIC_API_KEY;
   if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY is required for intake extraction.");
+    console.warn("ANTHROPIC_API_KEY missing; using heuristic intake extraction.");
+    return heuristicExtractInboundEmail(message);
   }
 
-  const anthropic = new Anthropic({ apiKey });
-  const response = await anthropic.messages.create({
-    model,
-    max_tokens: 1200,
-    temperature: 0,
-    system:
-      "You are the CreatrOps Intake Agent. Extract brand deal CRM fields from inbound creator partnership emails. Return only compact JSON matching this schema: { isSpam:boolean, isOutOfOffice:boolean, spamReason:string|null, brandName:string|null, website:string|null, campaignType:string|null, platforms:string[], budget:{amount:number|null,currency:string|null}|null, timeline:string|null, senderName:string|null, senderTitle:string|null }. Treat newsletters, auto-replies, undeliverable notices, obvious spam, and out-of-office replies as spam or OOO.",
-    messages: [
-      {
-        role: "user",
-        content: getMessageText(message),
-      },
-    ],
-  });
+  try {
+    const anthropic = new Anthropic({ apiKey });
+    const response = await anthropic.messages.create({
+      model,
+      max_tokens: 1200,
+      temperature: 0,
+      system:
+        "You are the CreatrOps Intake Agent. Extract brand deal CRM fields from inbound creator partnership emails. Return only compact JSON matching this schema: { isSpam:boolean, isOutOfOffice:boolean, spamReason:string|null, brandName:string|null, website:string|null, campaignType:string|null, platforms:string[], budget:{amount:number|null,currency:string|null}|null, timeline:string|null, senderName:string|null, senderTitle:string|null }. Treat newsletters, auto-replies, undeliverable notices, obvious spam, and out-of-office replies as spam or OOO.",
+      messages: [
+        {
+          role: "user",
+          content: getMessageText(message),
+        },
+      ],
+    });
 
-  const text = response.content
-    .filter((block) => block.type === "text")
-    .map((block) => block.text)
-    .join("")
-    .trim();
+    const text = response.content
+      .filter((block) => block.type === "text")
+      .map((block) => block.text)
+      .join("")
+      .trim();
 
-  const json = JSON.parse(text) as unknown;
-  return extractionSchema.parse(json);
+    const json = JSON.parse(text) as unknown;
+    return extractionSchema.parse(json);
+  } catch (error) {
+    console.error("Anthropic intake extraction failed; using heuristic fallback:", error);
+    return heuristicExtractInboundEmail(message);
+  }
 }
 
 async function writeActivity(
@@ -177,6 +270,7 @@ export async function processInboundEmail(
     const rawPayload = mergeRawPayload(message.raw_payload, {
       intake: {
         model,
+        fallback_model: fallbackModel,
         extraction,
         processed_at: new Date().toISOString(),
       },
@@ -277,7 +371,7 @@ export async function processInboundEmail(
           email: contactEmail ?? `unknown-${messageId}@inbound.local`,
           full_name: extraction.senderName,
           title: extraction.senderTitle,
-          source: "resend_inbound",
+          source: "inbound_email",
         })
         .select("id")
         .single();
@@ -292,7 +386,7 @@ export async function processInboundEmail(
           company_id: company.id,
           full_name: extraction.senderName,
           title: extraction.senderTitle,
-          source: "resend_inbound",
+          source: "inbound_email",
         })
         .eq("id", contact.id);
     }
@@ -343,11 +437,11 @@ export async function processInboundEmail(
       },
     });
 
-    await enqueuePgBossJob(
-      QUALIFICATION_SCORE_JOB,
-      { dealId: deal.id, messageId },
-      { singletonKey: `deal:${deal.id}` },
-    );
+    await enqueueJob(supabase, {
+      jobType: QUALIFICATION_SCORE_JOB,
+      payload: { dealId: deal.id, messageId },
+      idempotencyKey: `deal:${deal.id}`,
+    });
 
     await writeActivity(supabase, {
       clientId: message.client_id,
