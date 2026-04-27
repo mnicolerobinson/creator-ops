@@ -59,10 +59,6 @@ function LoginForm() {
         <h1 className="mt-10 font-[var(--font-cormorant)] text-5xl font-light leading-none tracking-[-0.03em]">
           Your brand deals. Finally running themselves.
         </h1>
-        <p className="mt-5 text-sm leading-8 text-[#B0A89A]">
-          Sign in with your work email. Magic link stays primary, and password
-          sign-in is available as a fallback when you need it.
-        </p>
       {authError ? (
         <div
           className="mt-6 rounded-2xl border border-[#C8102E]/40 bg-[#141414] px-4 py-3 text-sm text-[#FAFAFA]"

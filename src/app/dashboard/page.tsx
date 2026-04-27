@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -143,8 +144,8 @@ export default async function DashboardPage() {
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <header className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-[#2A211C] bg-[#0B0B0B] px-5 py-4 shadow-2xl shadow-black/30">
           <div className="flex items-center gap-4">
-            <div className="grid h-11 w-11 place-items-center rounded-2xl border border-[#C9A84C]/40 bg-[#130D0A] font-[var(--font-bebas)] text-2xl tracking-widest text-[#C9A84C]">
-              CO
+            <div className="grid h-11 w-11 place-items-center rounded-2xl border border-[#C9A84C]/40 bg-[#130D0A]">
+              <Image src="/logo.png" alt="CreatrOps" width={40} height={40} />
             </div>
             <div>
               <p className="font-[var(--font-bebas)] text-3xl tracking-[0.2em]">
