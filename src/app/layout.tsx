@@ -21,9 +21,33 @@ const bebas = Bebas_Neue({
 });
 
 export const metadata: Metadata = {
-  title: "CreatrOps — Clairen Haus",
+  metadataBase: new URL("https://app.creatrops.com"),
+  title: "CreatrOps — Your Brand Deals. Finally Running Themselves.",
   description:
-    "Your brand deals. Finally running themselves.",
+    "A dedicated ops team that handles every brand inquiry, manages your deals, and keeps your pipeline moving — so you can focus on creating.",
+  openGraph: {
+    type: "website",
+    title: "CreatrOps — Your Brand Deals. Finally Running Themselves.",
+    description:
+      "A dedicated ops team that handles every brand inquiry, manages your deals, and keeps your pipeline moving.",
+    url: "https://app.creatrops.com",
+    siteName: "CreatrOps",
+    images: [
+      {
+        url: "https://app.creatrops.com/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "CreatrOps",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CreatrOps — Your Brand Deals. Finally Running Themselves.",
+    description:
+      "A dedicated ops team that handles every brand inquiry, manages your deals, and keeps your pipeline moving.",
+    images: ["https://app.creatrops.com/og-image.png"],
+  },
 };
 
 export default function RootLayout({
