@@ -1,3 +1,4 @@
+import { randomInt } from "crypto";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import Stripe from "stripe";
@@ -15,6 +16,32 @@ function referralCodeBase(email: string) {
 function getStripeId(value: string | { id?: string } | null | undefined) {
   if (!value) return null;
   return typeof value === "string" ? value : value.id ?? null;
+}
+
+function randomChar(pool: string) {
+  return pool[randomInt(pool.length)];
+}
+
+function shuffleSecure(chars: string[]) {
+  for (let i = chars.length - 1; i > 0; i -= 1) {
+    const j = randomInt(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars;
+}
+
+function generateTemporaryPassword() {
+  const lower = "abcdefghijkmnopqrstuvwxyz";
+  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const numbers = "23456789";
+  const all = lower + upper + numbers;
+  const chars = [randomChar(lower), randomChar(upper), randomChar(numbers)];
+
+  while (chars.length < 12) {
+    chars.push(randomChar(all));
+  }
+
+  return shuffleSecure(chars).join("");
 }
 
 function getWebhookSecrets(env: ReturnType<typeof getEnv>) {
@@ -49,21 +76,24 @@ function constructStripeEvent({
   throw lastError ?? new Error("Stripe webhook signature verification failed.");
 }
 
-async function sendMagicLinkEmail(args: {
+async function sendWelcomeEmail(args: {
   apiKey: string;
   to: string;
-  link: string;
+  temporaryPassword: string;
 }) {
+  const loginUrl = "https://app.creatrops.com/login";
   const resend = new Resend(args.apiKey);
   await resend.emails.send({
     from: "CreatrOps <noreply@clairenhaus.com>",
     to: args.to,
-    subject: "Welcome to CreatrOps — Sign in to complete your setup",
+    subject: "Welcome to CreatrOps — your account is ready",
+    text: `Welcome to CreatrOps. Sign in at ${loginUrl} with this temporary password: ${args.temporaryPassword}`,
     html: `
       <h1>Welcome to CreatrOps</h1>
-      <p>Your account is ready. Click below to sign in and complete your onboarding.</p>
-      <a href="${args.link}" style="background:#C8102E;color:white;padding:12px 24px;text-decoration:none;display:inline-block;">Complete Your Setup</a>
-      <p>This link expires in 24 hours.</p>
+      <p>Your account is ready. Sign in with the temporary password below.</p>
+      <p><strong>Temporary password:</strong> ${args.temporaryPassword}</p>
+      <a href="${loginUrl}" style="background:#C8102E;color:white;padding:12px 24px;text-decoration:none;display:inline-block;">Sign In</a>
+      <p>Please update your password after signing in.</p>
     `,
   });
 }
@@ -157,26 +187,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Resend not configured" }, { status: 501 });
     }
 
-    const linkResult = await supabase.auth.admin.generateLink({
-      type: "magiclink",
+    const temporaryPassword = generateTemporaryPassword();
+    const createUserResult = await supabase.auth.admin.createUser({
       email: customerEmail,
-      options: {
-        redirectTo:
-          "https://app.creatrops.com/auth/callback?next=/onboarding/step-1",
+      password: temporaryPassword,
+      email_confirm: true,
+      user_metadata: {
+        full_name: session.customer_details?.name ?? null,
       },
     });
 
-    if (linkResult.error) {
-      throw linkResult.error;
+    if (createUserResult.error) {
+      throw createUserResult.error;
     }
 
-    const userId = linkResult.data.user?.id ?? null;
-    const magicLink = linkResult.data.properties?.action_link;
+    const userId = createUserResult.data.user?.id ?? null;
     if (!userId) {
-      throw new Error("Supabase did not return a user for the magic link.");
-    }
-    if (!magicLink) {
-      throw new Error("Supabase did not return a magic link.");
+      throw new Error("Supabase did not return a user for the new account.");
     }
 
     const customerId = getStripeId(session.customer);
@@ -237,10 +264,10 @@ export async function POST(req: Request) {
       },
     });
 
-    await sendMagicLinkEmail({
+    await sendWelcomeEmail({
       apiKey: env.RESEND_API_KEY,
       to: customerEmail,
-      link: magicLink,
+      temporaryPassword,
     });
   }
 
