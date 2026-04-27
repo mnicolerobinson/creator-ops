@@ -1,7 +1,7 @@
 # CreatrOps — Implementation Spec
 
-**Version:** v3.0
-**Last Updated:** 2026-04-25
+**Version:** v4.0
+**Last Updated:** 2026-04-27
 **Status:** Build spec — ready for Cursor
 **Product:** CreatrOps (creatrops.com)
 **Parent company:** Clairen Haus
