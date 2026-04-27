@@ -33,10 +33,14 @@ export async function requireOps() {
   return ctx;
 }
 
+/** Client portal: same access as /dashboard (linked user_clients row; not ops). */
 export async function requireCreator() {
   const ctx = await requireUser();
-  if (!["creator", "creator_delegate"].includes(ctx.profile?.role ?? "")) {
+  if (["superadmin", "operator"].includes(ctx.profile?.role ?? "")) {
     redirect("/ops");
+  }
+  if (!ctx.clientAccess?.client_id) {
+    redirect("/login?error=auth");
   }
   return ctx;
 }

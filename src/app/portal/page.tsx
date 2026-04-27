@@ -14,10 +14,6 @@ export default async function PortalHomePage() {
     redirect("/ops");
   }
 
-  if (!["creator", "creator_delegate"].includes(profile?.role ?? "")) {
-    redirect("/login");
-  }
-
   const clientId = clientAccess?.client_id;
   if (!clientId) redirect("/login?error=auth");
 
