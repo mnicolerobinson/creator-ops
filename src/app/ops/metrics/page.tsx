@@ -1,4 +1,9 @@
 import { requireOps } from "@/lib/auth/guards";
+import {
+  isSubscriptionTierKey,
+  monthlyLlmBudgetCentsForTier,
+  subscriptionTiers,
+} from "@/lib/billing/tiers";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 type AgentRunRow = {
@@ -7,11 +12,6 @@ type AgentRunRow = {
   llm_cost_cents: string | number | null;
   started_at: string;
 };
-
-const DEFAULT_BUDGET_CENTS = () =>
-  Number(process.env.CREATOR_LLM_MONTHLY_BUDGET_CENTS) > 0
-    ? Number(process.env.CREATOR_LLM_MONTHLY_BUDGET_CENTS)
-    : 50_000;
 
 function monthUtcRange() {
   const now = new Date();
@@ -28,8 +28,8 @@ function toNum(v: string | number | null | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-function budgetFromPolicy(policyJson: unknown, defaultCents: number): number {
-  if (!policyJson || typeof policyJson !== "object") return defaultCents;
+function budgetFromPolicy(policyJson: unknown, tierDefaultCents: number): number {
+  if (!policyJson || typeof policyJson !== "object") return tierDefaultCents;
   const o = policyJson as Record<string, unknown>;
   const direct = o.monthly_llm_budget_cents;
   if (typeof direct === "number" && direct > 0) return direct;
@@ -38,7 +38,7 @@ function budgetFromPolicy(policyJson: unknown, defaultCents: number): number {
     const v = (om as Record<string, unknown>).monthly_llm_budget_cents;
     if (typeof v === "number" && v > 0) return v;
   }
-  return defaultCents;
+  return tierDefaultCents;
 }
 
 function formatUsd(cents: number) {
@@ -50,12 +50,24 @@ function formatUsd(cents: number) {
   }).format(cents / 100);
 }
 
+function tierDisplayName(tier: string | null | undefined): string {
+  if (tier && isSubscriptionTierKey(tier)) {
+    return subscriptionTiers[tier].name;
+  }
+  return "Unknown tier";
+}
+
 export default async function OpsMetricsPage() {
   await requireOps();
   const client = await createServerSupabaseClient();
   const { start, end } = monthUtcRange();
-  const defaultBudget = DEFAULT_BUDGET_CENTS();
   const monthLabel = start.toLocaleString("en-US", { month: "long", year: "numeric" });
+
+  const capStarter = subscriptionTiers.starter_ops.monthlyLlmBudgetCents;
+  const capGrowth = subscriptionTiers.growth_ops.monthlyLlmBudgetCents;
+  const capCeo = subscriptionTiers.creator_ceo.monthlyLlmBudgetCents;
+  const envFallbackCents = Number(process.env.CREATOR_LLM_MONTHLY_BUDGET_CENTS);
+  const hasEnvFallback = Number.isFinite(envFallbackCents) && envFallbackCents > 0;
 
   const { data: runs } = await client
     .from("agent_runs")
@@ -63,13 +75,15 @@ export default async function OpsMetricsPage() {
     .gte("started_at", start.toISOString())
     .lte("started_at", end.toISOString());
 
-  const { data: clients } = await client.from("clients").select("id, name, creator_display_name");
+  const { data: clients } = await client
+    .from("clients")
+    .select("id, name, creator_display_name, subscription_tier");
+
   const { data: policies } = await client.from("client_policies").select("client_id, policy_json");
 
-  const policyBudget = new Map<string, number>();
-  for (const p of policies ?? []) {
-    policyBudget.set(p.client_id, budgetFromPolicy(p.policy_json, defaultBudget));
-  }
+  const policyJsonByClient = new Map<string, unknown>(
+    (policies ?? []).map((p) => [p.client_id, p.policy_json]),
+  );
 
   const clientName = new Map(
     (clients ?? []).map((c) => [c.id, c.creator_display_name || c.name || c.id]),
@@ -86,13 +100,15 @@ export default async function OpsMetricsPage() {
     spendByAgent.set(r.agent_name, (spendByAgent.get(r.agent_name) ?? 0) + c);
   }
 
-  const clientRows = Array.from(clientName.keys()).map((id) => {
-    const spend = spendByClient.get(id) ?? 0;
-    const budget = policyBudget.get(id) ?? defaultBudget;
+  const clientRows = (clients ?? []).map((cl) => {
+    const spend = spendByClient.get(cl.id) ?? 0;
+    const tierDefault = monthlyLlmBudgetCentsForTier(cl.subscription_tier);
+    const budget = budgetFromPolicy(policyJsonByClient.get(cl.id), tierDefault);
     const pct = budget > 0 ? (spend / budget) * 100 : 0;
     return {
-      id,
-      name: clientName.get(id) ?? id,
+      id: cl.id,
+      name: clientName.get(cl.id) ?? cl.id,
+      tierLabel: tierDisplayName(cl.subscription_tier),
       spend,
       budget,
       pct,
@@ -134,8 +150,16 @@ export default async function OpsMetricsPage() {
         <p className="text-[11px] uppercase tracking-[0.35em] text-[#C8102E]">Operations</p>
         <h1 className="mt-2 font-[var(--font-cormorant)] text-4xl text-[#F7F0E8]">Cost &amp; safety metrics</h1>
         <p className="mt-2 text-sm text-[#8F8678]">
-          {monthLabel} (UTC) · default monthly LLM cap {formatUsd(defaultBudget)} per client unless overridden
-          in <code className="text-[#C9A84C]">client_policies.policy_json.monthly_llm_budget_cents</code>
+          {monthLabel} (UTC) · default monthly LLM caps by tier: Starter Ops {formatUsd(capStarter)}, Growth Ops{" "}
+          {formatUsd(capGrowth)}, Creator CEO {formatUsd(capCeo)} — overridden per client via{" "}
+          <code className="text-[#C9A84C]">client_policies.policy_json.monthly_llm_budget_cents</code>
+          {hasEnvFallback ? (
+            <>
+              {" "}
+              · if <code className="text-[#C9A84C]">subscription_tier</code> is missing, env fallback{" "}
+              {formatUsd(envFallbackCents)} applies
+            </>
+          ) : null}
         </p>
       </div>
 
@@ -175,13 +199,16 @@ export default async function OpsMetricsPage() {
           <p className="mt-1 text-sm text-[#8F8678]">LLM cost from agent_runs.llm_cost_cents (month)</p>
           <div className="mt-6 space-y-4">
             {clientRows.length === 0 ? (
-              <p className="text-sm text-[#8F8678]">No agent runs this month yet.</p>
+              <p className="text-sm text-[#8F8678]">No clients yet.</p>
             ) : (
               clientRows.map((row) => (
                 <div key={row.id}>
                   <div className="flex items-center justify-between gap-2 text-sm">
                     <span className="flex flex-wrap items-center gap-2 text-[#F7F0E8]">
                       {row.name}
+                      <span className="text-[10px] uppercase tracking-wide text-[#6F675E]">
+                        ({row.tierLabel})
+                      </span>
                       {row.nearLimit ? (
                         <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-200">
                           ≥90% budget
@@ -226,7 +253,8 @@ export default async function OpsMetricsPage() {
       <section className="rounded-3xl border border-[#2A211C] bg-[#0B0B0B] p-6">
         <h2 className="font-[var(--font-cormorant)] text-2xl text-[#F7F0E8]">Budget utilization by client</h2>
         <p className="mt-1 text-sm text-[#8F8678]">
-          Percent of monthly limit (per-client override or {formatUsd(defaultBudget)} default)
+          Percent of monthly limit — tier default unless{" "}
+          <code className="text-[#C9A84C]">policy_json.monthly_llm_budget_cents</code> overrides
         </p>
         <div className="mt-6 space-y-4">
           {clientRows.length === 0 ? (
@@ -237,8 +265,11 @@ export default async function OpsMetricsPage() {
               const alert = row.pct >= 90;
               return (
                 <div key={row.id}>
-                  <div className="flex items-center justify-between gap-2 text-sm">
-                    <span className="text-[#F7F0E8]">{row.name}</span>
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <span className="text-[#F7F0E8]">
+                      {row.name}{" "}
+                      <span className="text-[#6F675E]">({row.tierLabel})</span>
+                    </span>
                     <span className={alert ? "font-semibold text-amber-200" : "text-[#B0A89A]"}>
                       {row.pct.toFixed(0)}% · {formatUsd(row.spend)} / {formatUsd(row.budget)}
                     </span>

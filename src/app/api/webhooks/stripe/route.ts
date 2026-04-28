@@ -261,6 +261,7 @@ export async function POST(req: Request) {
         blocked_categories: ["gambling", "crypto", "tobacco", "firearms", "mlm"],
         approved_categories: [],
         tier: tierConfig.name,
+        monthly_llm_budget_cents: subscriptionTiers[tier].monthlyLlmBudgetCents,
       },
     });
 
