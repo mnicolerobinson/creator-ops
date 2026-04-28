@@ -584,7 +584,7 @@ export async function processInboundEmail(
 
     await enqueueJob(supabase, {
       jobType: QUALIFICATION_SCORE_JOB,
-      payload: { dealId: deal.id, messageId },
+      payload: { dealId: deal.id, clientId: message.client_id, messageId },
       idempotencyKey: `deal:${deal.id}`,
     });
 

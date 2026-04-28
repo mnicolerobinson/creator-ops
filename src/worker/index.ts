@@ -1,11 +1,19 @@
 import { processInboundEmail } from "@/agents/intake";
+import { runQualificationScore } from "@/agents/qualification";
 import {
   createPgBoss,
   INTAKE_PROCESS_EMAIL_JOB,
+  QUALIFICATION_SCORE_JOB,
 } from "@/lib/jobs/pgboss";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type IntakeProcessEmailJob = {
+  messageId?: string;
+};
+
+type QualificationScoreJob = {
+  dealId: string;
+  clientId?: string;
   messageId?: string;
 };
 
@@ -31,7 +39,26 @@ async function main() {
     },
   );
 
-  console.log(`Worker listening for ${INTAKE_PROCESS_EMAIL_JOB}`);
+  await boss.work<QualificationScoreJob>(
+    QUALIFICATION_SCORE_JOB,
+    { batchSize: 1, pollingIntervalSeconds: 2 },
+    async (jobs) => {
+      for (const job of jobs) {
+        if (!job.data.dealId) {
+          throw new Error("qualification.score missing dealId.");
+        }
+        await runQualificationScore(supabase, {
+          dealId: job.data.dealId,
+          clientId: job.data.clientId,
+          messageId: job.data.messageId,
+        });
+      }
+    },
+  );
+
+  console.log(
+    `Worker listening for ${INTAKE_PROCESS_EMAIL_JOB}, ${QUALIFICATION_SCORE_JOB}`,
+  );
 
   const shutdown = async () => {
     console.log("Stopping worker...");

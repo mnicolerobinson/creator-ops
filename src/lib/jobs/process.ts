@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { processInboundEmail } from "@/agents/intake";
+import { runQualificationScore } from "@/agents/qualification";
 import { sendPersonaEmail } from "@/lib/email/resend";
 import { createDraftFromTemplate } from "@/lib/contracts/documenso";
 import { createInvoiceForDeal } from "@/lib/billing/stripe";
@@ -88,15 +89,27 @@ async function runJob(
       if (!dealId) {
         throw new Error("qualification.score missing dealId.");
       }
-      await supabase
-        .from("deals")
-        .update({
-          qualification_score: "0.50",
-          qualification_reason:
-            "Queued for qualification. Initial intake used the heuristic fallback parser.",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", dealId);
+      const clientId = payload.clientId as string | undefined;
+      const messageId = payload.messageId as string | undefined;
+      await runQualificationScore(supabase, { dealId, clientId, messageId });
+      return;
+    }
+    case "inbox.draft_reply": {
+      const dealId = payload.dealId as string | undefined;
+      const clientId = payload.clientId as string | undefined;
+      const templateKey = payload.template_key as string | undefined;
+      if (!dealId || !clientId || !templateKey) {
+        throw new Error("inbox.draft_reply requires dealId, clientId, template_key.");
+      }
+      await supabase.from("activity_feed").insert({
+        client_id: clientId,
+        deal_id: dealId,
+        event_type: "inbox.draft_enqueued",
+        title: `Outbound draft queued (${templateKey})`,
+        body: "Awaiting Inbox Agent implementation for template rendering and send.",
+        actor: "system",
+        metadata: { template_key: templateKey },
+      });
       return;
     }
     case "send_scheduled_email": {
