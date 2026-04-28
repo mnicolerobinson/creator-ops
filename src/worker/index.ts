@@ -4,6 +4,7 @@ import {
   createPgBoss,
   INTAKE_PROCESS_EMAIL_JOB,
   QUALIFICATION_SCORE_JOB,
+  resolvePgBossDatabaseUrl,
 } from "@/lib/jobs/pgboss";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -18,6 +19,9 @@ type QualificationScoreJob = {
 };
 
 async function main() {
+  const dbPreview = resolvePgBossDatabaseUrl().replace(/:[^:@]+@/, ":****@");
+  console.log(`[worker] pg-boss DATABASE_URL resolved (${dbPreview.slice(0, 48)}…)`);
+
   const boss = createPgBoss();
   const supabase = createAdminClient();
 
@@ -26,6 +30,7 @@ async function main() {
   });
 
   await boss.start();
+  console.log("[worker] pg-boss started; registering handlers…");
   await boss.work<IntakeProcessEmailJob>(
     INTAKE_PROCESS_EMAIL_JOB,
     { batchSize: 1, pollingIntervalSeconds: 2 },

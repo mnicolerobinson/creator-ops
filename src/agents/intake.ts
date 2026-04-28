@@ -5,10 +5,13 @@ import { getEnv } from "@/lib/env";
 import { evaluateIntakeSafety } from "@/lib/intake/safety";
 import { haikuCostCentsFromUsage } from "@/lib/llm/haiku-cost";
 import { enqueueJob } from "@/lib/jobs/enqueue";
+import {
+  enqueuePgBossJob,
+  QUALIFICATION_SCORE_JOB,
+} from "@/lib/jobs/pgboss";
 
 const model = "claude-haiku-4-5-20251001";
 const fallbackModel = "heuristic-fallback";
-const QUALIFICATION_SCORE_JOB = "qualification.score";
 
 const extractionSchema = z.object({
   isSpam: z.boolean(),
@@ -582,11 +585,31 @@ export async function processInboundEmail(
       },
     });
 
-    await enqueueJob(supabase, {
-      jobType: QUALIFICATION_SCORE_JOB,
-      payload: { dealId: deal.id, clientId: message.client_id, messageId },
-      idempotencyKey: `deal:${deal.id}`,
-    });
+    try {
+      await enqueuePgBossJob(
+        QUALIFICATION_SCORE_JOB,
+        {
+          dealId: deal.id,
+          clientId: message.client_id,
+          messageId,
+        },
+        {
+          singletonKey: `qualification:${deal.id}`,
+          retryLimit: 3,
+          retryDelay: 30,
+        },
+      );
+    } catch (pgBossErr) {
+      console.error(
+        "[intake] pg-boss send failed for qualification.score; falling back to job_queue:",
+        pgBossErr,
+      );
+      await enqueueJob(supabase, {
+        jobType: QUALIFICATION_SCORE_JOB,
+        payload: { dealId: deal.id, clientId: message.client_id, messageId },
+        idempotencyKey: `deal:${deal.id}`,
+      });
+    }
 
     await writeActivity(supabase, {
       clientId: message.client_id,
