@@ -30,9 +30,7 @@ function monthStartIso() {
 }
 
 export default async function OpsHomePage() {
-  const ctx = await requireOps();
-  if ("opsAuthFailed" in ctx && ctx.opsAuthFailed) return null;
-  const { supabase, profile, user } = ctx;
+  const { supabase, profile, user } = await requireOps();
   const allowed = await getOpsAllowedClientIds(supabase, user.id, profile?.role);
 
   const emptyUuid = ["00000000-0000-0000-0000-000000000000"] as string[];

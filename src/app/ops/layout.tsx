@@ -6,33 +6,7 @@ import { OpsSignupToasts } from "./_components/ops-signup-toasts";
 const navLink = "text-xs uppercase tracking-[0.2em] text-[#8F8678] transition hover:text-[#C9A84C]";
 
 export default async function OpsLayout({ children }: { children: ReactNode }) {
-  const opsCtx = await requireOps();
-
-  /** TEMPORARY: show DB auth values instead of redirecting when ops gate fails */
-  if ("opsAuthFailed" in opsCtx && opsCtx.opsAuthFailed) {
-    return (
-      <div className="min-h-screen bg-[#050505] p-8 font-mono text-sm text-[#F7F0E8]">
-        <p className="text-[10px] uppercase tracking-[0.35em] text-[#C8102E]">
-          Temporary debug (remove TEMPORARY_OPS_AUTH_DEBUG in guards.ts)
-        </p>
-        <h1 className="mt-4 font-[var(--font-cormorant)] text-3xl font-light text-[#F7F0E8]">
-          Ops auth debug
-        </h1>
-        <p className="mt-6">
-          <strong className="text-[#C9A84C]">User ID:</strong>{" "}
-          <span className="break-all">{opsCtx.user.id}</span>
-        </p>
-        <p className="mt-3">
-          <strong className="text-[#C9A84C]">Role:</strong>{" "}
-          {opsCtx.profile?.role ?? "(no profile row / null role)"}
-        </p>
-        <pre className="mt-6 max-h-[70vh] overflow-auto rounded-xl border border-[#2A211C] bg-[#0B0B0B] p-4 text-xs leading-relaxed">
-          Profile from DB (JSON):{"\n"}
-          {JSON.stringify(opsCtx.profile, null, 2)}
-        </pre>
-      </div>
-    );
-  }
+  await requireOps();
 
   return (
     <div className="min-h-screen bg-[#050505] text-[#F7F0E8]">
