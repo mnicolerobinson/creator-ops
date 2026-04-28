@@ -3,6 +3,9 @@ import type { ReactNode } from "react";
 import { requireOps } from "@/lib/auth/guards";
 import { OpsSignupToasts } from "./_components/ops-signup-toasts";
 
+/** Avoid cached RSC output for auth-gated ops shell (fresh user_profiles read every request). */
+export const dynamic = "force-dynamic";
+
 const navLink = "text-xs uppercase tracking-[0.2em] text-[#8F8678] transition hover:text-[#C9A84C]";
 
 export default async function OpsLayout({ children }: { children: ReactNode }) {

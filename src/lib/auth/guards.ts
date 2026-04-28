@@ -1,5 +1,16 @@
+import { unstable_noStore as noStore } from "next/cache";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+
+/** Normalize DB role text (handles stray whitespace / casing drift vs CHECK constraint). */
+export function normalizeRole(role: string | null | undefined): string {
+  return (role ?? "").trim().toLowerCase();
+}
+
+export function isOpsRole(role: string | null | undefined): boolean {
+  const r = normalizeRole(role);
+  return r === "superadmin" || r === "operator";
+}
 
 export async function requireUser() {
   const supabase = await createServerSupabaseClient();
@@ -26,6 +37,7 @@ export async function requireUser() {
 }
 
 export async function requireOps() {
+  noStore();
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -34,13 +46,17 @@ export async function requireOps() {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileErr } = await supabase
     .from("user_profiles")
     .select("role")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
-  if (!profile || !["superadmin", "operator"].includes(profile.role)) {
+  if (profileErr) {
+    console.error("[requireOps] user_profiles select failed:", profileErr.message);
+  }
+
+  if (!profile || !isOpsRole(profile.role)) {
     redirect("/dashboard");
   }
 
@@ -57,7 +73,7 @@ export async function requireOps() {
 /** Ensure operator/superadmin may access this client row (RLS-aligned). */
 export async function requireOpsClientAccess(clientId: string) {
   const ctx = await requireOps();
-  if (ctx.profile?.role === "superadmin") {
+  if (normalizeRole(ctx.profile?.role) === "superadmin") {
     return ctx;
   }
   const { data } = await ctx.supabase
@@ -75,7 +91,7 @@ export async function requireOpsClientAccess(clientId: string) {
 /** Client portal: same access as /dashboard (linked user_clients row; not ops). */
 export async function requireCreator() {
   const ctx = await requireUser();
-  if (["superadmin", "operator"].includes(ctx.profile?.role ?? "")) {
+  if (isOpsRole(ctx.profile?.role)) {
     redirect("/ops");
   }
   if (!ctx.clientAccess?.client_id) {

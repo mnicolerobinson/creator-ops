@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { isOpsRole } from "@/lib/auth/guards";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { LegalFooterLinks } from "@/components/LegalFooterLinks";
 import {
@@ -32,7 +33,7 @@ export default async function DashboardPage() {
       .maybeSingle(),
   ]);
 
-  if (["operator", "superadmin"].includes(profile?.role ?? "")) redirect("/ops");
+  if (isOpsRole(profile?.role)) redirect("/ops");
   if (!access?.client_id) redirect("/login?error=auth");
 
   const clientId = access.client_id;

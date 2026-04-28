@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { requireOps } from "@/lib/auth/guards";
+import { normalizeRole, requireOps } from "@/lib/auth/guards";
 import { OpsClientMessages } from "../../client-messages";
 
 function formatMoney(cents: number | null) {
@@ -31,7 +31,7 @@ export default async function OpsDealDetailPage({
     notFound();
   }
 
-  if (profile?.role !== "superadmin") {
+  if (normalizeRole(profile?.role) !== "superadmin") {
     const { data: access } = await supabase
       .from("user_clients")
       .select("client_id")

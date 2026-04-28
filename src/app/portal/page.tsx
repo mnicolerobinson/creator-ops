@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth/guards";
+import { isOpsRole, requireUser } from "@/lib/auth/guards";
 import {
   CopyReferralButton,
   LiveActivityFeed,
@@ -10,7 +10,7 @@ import {
 export default async function PortalHomePage() {
   const { user, profile, clientAccess, supabase } = await requireUser();
 
-  if (["operator", "superadmin"].includes(profile?.role ?? "")) {
+  if (isOpsRole(profile?.role)) {
     redirect("/ops");
   }
 
